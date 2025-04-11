@@ -3,7 +3,10 @@ import pandas as pd
 from datetime import datetime
 import time
 import streamlit as st
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text, ForeignKey
+import sqlalchemy
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, ForeignKey
+from sqlalchemy import text as sql_text  # Renamed to avoid confusion
+from sqlalchemy import Text as SQLText  # Renamed to avoid confusion
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
@@ -17,6 +20,11 @@ def get_engine(max_retries=3, retry_delay=2):
     retry_count = 0
     last_error = None
 
+    # If no DATABASE_URL is provided, use in-memory SQLite
+    if not DATABASE_URL:
+        print("No DATABASE_URL provided, using in-memory SQLite database")
+        return create_engine('sqlite:///:memory:')
+
     while retry_count < max_retries:
         try:
             # Create SQLAlchemy engine with connection pooling and ping
@@ -28,9 +36,10 @@ def get_engine(max_retries=3, retry_delay=2):
                     "connect_timeout": 10  # Timeout after 10 seconds
                 }
             )
-            # Test connection
+            # Test connection with simple query
             with engine.connect() as conn:
-                conn.execute("SELECT 1")
+                from sqlalchemy import text
+                conn.execute(text("SELECT 1"))
             return engine
         except (OperationalError, SQLAlchemyError) as e:
             retry_count += 1
@@ -39,10 +48,13 @@ def get_engine(max_retries=3, retry_delay=2):
             time.sleep(retry_delay)
     
     print(f"Failed to connect to database after {max_retries} attempts: {last_error}")
-    return None
+    print("Falling back to in-memory SQLite database")
+    # Fallback to in-memory SQLite database if PostgreSQL is unavailable
+    return create_engine('sqlite:///:memory:')
 
-# Create SQLAlchemy engine with retry
+# Create SQLAlchemy engine with retry and fallback
 engine = get_engine()
+print(f"Using database engine: {engine.name}")
 
 # Create declarative base
 Base = declarative_base()
@@ -93,7 +105,7 @@ class Watchlist(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
-    description = Column(Text)
+    description = Column(String(500))  # Using String instead of Text
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship

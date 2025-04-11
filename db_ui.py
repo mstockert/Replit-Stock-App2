@@ -135,47 +135,63 @@ def display_watchlist_manager():
 
 def save_search_to_history(query, search_type):
     """Save a search query to history"""
-    db.add_search_to_history(query, search_type)
+    try:
+        db.add_search_to_history(query, search_type)
+    except Exception as e:
+        print(f"Error saving search history: {e}")
+        # Continue without saving search history
 
 def display_recent_searches():
     """Display recent search history"""
-    searches = db.get_search_history(limit=5)
-    
-    if searches:
-        st.subheader("Recent Searches")
+    try:
+        searches = db.get_search_history(limit=5)
         
-        # Display as clickable buttons
-        for search in searches:
-            query = search['query']
-            search_type = search['type']
+        if searches:
+            st.subheader("Recent Searches")
             
-            # For comparison searches, split the query
-            if ',' in query and search_type == 'comparison':
-                button_label = f"Compare: {query}"
-            else:
-                button_label = query
+            # Display as clickable buttons
+            for search in searches:
+                query = search['query']
+                search_type = search['type']
                 
-            if st.button(button_label):
-                if search_type == 'comparison':
-                    st.session_state['compare_symbols'] = query
-                    st.session_state['analysis_type'] = "Stock Comparison"
+                # For comparison searches, split the query
+                if ',' in query and search_type == 'comparison':
+                    button_label = f"Compare: {query}"
                 else:
-                    st.session_state['ticker'] = query
-                    st.session_state['analysis_type'] = "Single Stock Analysis"
-                st.rerun()
+                    button_label = query
+                    
+                if st.button(button_label):
+                    if search_type == 'comparison':
+                        st.session_state['compare_symbols'] = query
+                        st.session_state['analysis_type'] = "Stock Comparison"
+                    else:
+                        st.session_state['ticker'] = query
+                        st.session_state['analysis_type'] = "Single Stock Analysis"
+                    st.rerun()
+    except Exception as e:
+        st.info("Search history is currently unavailable")
+        print(f"Error displaying search history: {e}")
 
 def cache_stock_data(ticker_symbol, hist_data):
     """Cache stock data in the database"""
-    # Add the stock to the database if it doesn't exist
-    stock_id = db.add_stock(ticker_symbol)
-    
-    # Format the data for database storage
-    if not hist_data.empty:
-        # Reset index to make Date a column
-        if isinstance(hist_data.index, pd.DatetimeIndex):
-            price_data = hist_data.reset_index()
-        else:
-            price_data = hist_data.copy()
-            
-        # Add to database
-        db.add_stock_prices(stock_id, price_data)
+    try:
+        # Add the stock to the database if it doesn't exist
+        stock_id = db.add_stock(ticker_symbol)
+        
+        if stock_id is None:
+            print("Could not add stock to database, skipping cache operation")
+            return
+        
+        # Format the data for database storage
+        if not hist_data.empty:
+            # Reset index to make Date a column
+            if isinstance(hist_data.index, pd.DatetimeIndex):
+                price_data = hist_data.reset_index()
+            else:
+                price_data = hist_data.copy()
+                
+            # Add to database
+            db.add_stock_prices(stock_id, price_data)
+    except Exception as e:
+        print(f"Error caching stock data: {e}")
+        # Continue without caching data
