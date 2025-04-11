@@ -5,6 +5,21 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 import numpy as np
+import os
+
+# Import database modules
+import database as db
+from db_ui import display_watchlist_manager, display_recent_searches, save_search_to_history, cache_stock_data
+
+# Initialize session state for persistent UI state across reruns
+if 'ticker' not in st.session_state:
+    st.session_state['ticker'] = "AAPL"
+    
+if 'analysis_type' not in st.session_state:
+    st.session_state['analysis_type'] = "Single Stock Analysis"
+    
+if 'compare_symbols' not in st.session_state:
+    st.session_state['compare_symbols'] = "AAPL,MSFT,GOOG"
 
 # Set up page configuration
 st.set_page_config(
@@ -227,55 +242,76 @@ st.sidebar.header("Stock Parameters")
 # Analysis type selection
 analysis_type = st.sidebar.radio(
     "Select Analysis Type:",
-    ["Single Stock Analysis", "Stock Comparison"]
+    ["Single Stock Analysis", "Stock Comparison", "Watchlists"]
 )
+
+# Update session state
+st.session_state['analysis_type'] = analysis_type
+
+# Define time periods (used across different modes)
+time_periods = {
+    "1 Week": "1wk", 
+    "1 Month": "1mo", 
+    "3 Months": "3mo", 
+    "6 Months": "6mo", 
+    "1 Year": "1y", 
+    "2 Years": "2y",
+    "5 Years": "5y",
+    "Maximum": "max"
+}
 
 if analysis_type == "Single Stock Analysis":
     # Single stock analysis
-    ticker = st.sidebar.text_input("Enter Stock Symbol (e.g., AAPL, MSFT, GOOG):", "AAPL").upper()
+    if 'ticker' in st.session_state:
+        default_ticker = st.session_state['ticker']
+    else:
+        default_ticker = "AAPL"
+        
+    ticker = st.sidebar.text_input("Enter Stock Symbol (e.g., AAPL, MSFT, GOOG):", default_ticker).upper()
+    st.session_state['ticker'] = ticker
     
     # Time period selection
-    time_periods = {
-        "1 Week": "1wk", 
-        "1 Month": "1mo", 
-        "3 Months": "3mo", 
-        "6 Months": "6mo", 
-        "1 Year": "1y", 
-        "2 Years": "2y",
-        "5 Years": "5y",
-        "Maximum": "max"
-    }
     selected_period = st.sidebar.selectbox("Select Time Period", list(time_periods.keys()), index=4)
     period = time_periods[selected_period]
     
     # Submit button
     submit_button = st.sidebar.button("Get Stock Data")
     
+    # Show recent searches
+    st.sidebar.subheader("Recent Searches")
+    recent_searches = db.get_search_history(limit=5)
+    
+    if recent_searches:
+        for search in recent_searches:
+            if search['type'] == 'single':
+                if st.sidebar.button(f"📊 {search['query']}", key=f"recent_{search['id']}"):
+                    ticker = search['query']
+                    st.session_state['ticker'] = ticker
+                    submit_button = True
+    
     compare_stocks = False
     tickers = []
+    normalize_prices = False  # Not used in single mode
 
-else:
+elif analysis_type == "Stock Comparison":
     # Stock comparison
     # Stock symbol input as a text field
+    if 'compare_symbols' in st.session_state:
+        default_symbols = st.session_state['compare_symbols']
+    else:
+        default_symbols = "AAPL,MSFT,GOOG"
+        
     tickers_input = st.sidebar.text_input(
         "Enter Stock Symbols (comma-separated, e.g., AAPL,MSFT,GOOG):", 
-        "AAPL,MSFT,GOOG"
+        default_symbols
     ).upper()
+    
+    st.session_state['compare_symbols'] = tickers_input
     
     # Convert input to list and clean
     tickers = [ticker.strip() for ticker in tickers_input.split(",") if ticker.strip()]
     
     # Time period selection
-    time_periods = {
-        "1 Week": "1wk", 
-        "1 Month": "1mo", 
-        "3 Months": "3mo", 
-        "6 Months": "6mo", 
-        "1 Year": "1y", 
-        "2 Years": "2y",
-        "5 Years": "5y",
-        "Maximum": "max"
-    }
     selected_period = st.sidebar.selectbox("Select Time Period", list(time_periods.keys()), index=4)
     period = time_periods[selected_period]
     
@@ -286,8 +322,38 @@ else:
     # Submit button
     submit_button = st.sidebar.button("Compare Stocks")
     
+    # Show recent comparison searches
+    st.sidebar.subheader("Recent Comparisons")
+    recent_searches = db.get_search_history(limit=5)
+    
+    if recent_searches:
+        for search in recent_searches:
+            if search['type'] == 'comparison' and ',' in search['query']:
+                if st.sidebar.button(f"🔄 {search['query']}", key=f"recent_{search['id']}"):
+                    tickers_input = search['query']
+                    tickers = [ticker.strip() for ticker in tickers_input.split(",") if ticker.strip()]
+                    st.session_state['compare_symbols'] = tickers_input
+                    submit_button = True
+    
     compare_stocks = True
     ticker = ""  # Not used in comparison mode
+
+else:  # Watchlist mode
+    # Display watchlist manager
+    st.sidebar.subheader("Watchlist Options")
+    
+    # Time period selection for watchlist view
+    selected_period = st.sidebar.selectbox("Select Time Period", list(time_periods.keys()), index=4)
+    period = time_periods[selected_period]
+    
+    # Normalize prices option for watchlist comparison
+    normalize_prices = st.sidebar.checkbox("Normalize Prices", value=True,
+                                         help="Normalize all stock prices to start at 100 for easier comparison")
+    
+    submit_button = False  # No direct submit in watchlist mode
+    compare_stocks = False
+    ticker = ""
+    tickers = []
 
 # Info section about the app
 st.sidebar.markdown("---")
@@ -296,6 +362,7 @@ st.sidebar.markdown("""
 This app fetches real-time and historical stock data from Yahoo Finance.
 - Input one or more stock symbols
 - Compare multiple stocks over time
+- Save favorite stocks to watchlists
 - View interactive charts and key metrics
 - Download data as CSV
 """)
@@ -662,14 +729,51 @@ if submit_button:
             else:
                 st.error(f"Could not retrieve data for {ticker}. Please verify the stock symbol and try again.")
 
+elif analysis_type == "Watchlists":
+    # Display watchlist manager
+    display_watchlist_manager()
+
 else:
     # Display a welcome message when no symbol is entered yet
     if analysis_type == "Single Stock Analysis":
         welcome_message = "👈 Enter a stock symbol in the sidebar and click 'Get Stock Data' to begin"
-    else:
+    elif analysis_type == "Stock Comparison":
         welcome_message = "👈 Enter multiple stock symbols in the sidebar and click 'Compare Stocks' to begin"
+    else:
+        welcome_message = "👈 Use the Watchlist Manager to create and view stock watchlists"
     
     st.info(welcome_message)
+    
+    # Display recent searches (for the welcome screen)
+    if analysis_type != "Watchlists":
+        recent_searches = db.get_search_history(limit=10)
+        if recent_searches:
+            st.subheader("Recent Searches")
+            
+            search_cols = st.columns(2)
+            
+            single_searches = [s for s in recent_searches if s['type'] == 'single']
+            comparison_searches = [s for s in recent_searches if s['type'] == 'comparison']
+            
+            with search_cols[0]:
+                if single_searches:
+                    st.markdown("##### Single Stock Searches")
+                    for search in single_searches[:5]:
+                        timestamp = search['timestamp'].strftime("%Y-%m-%d %H:%M")
+                        if st.button(f"📊 {search['query']}", key=f"main_recent_{search['id']}"):
+                            st.session_state['ticker'] = search['query']
+                            st.session_state['analysis_type'] = "Single Stock Analysis"
+                            st.rerun()
+            
+            with search_cols[1]:
+                if comparison_searches:
+                    st.markdown("##### Comparison Searches")
+                    for search in comparison_searches[:5]:
+                        timestamp = search['timestamp'].strftime("%Y-%m-%d %H:%M")
+                        if st.button(f"🔄 {search['query']}", key=f"main_comp_{search['id']}"):
+                            st.session_state['compare_symbols'] = search['query']
+                            st.session_state['analysis_type'] = "Stock Comparison"
+                            st.rerun()
     
     # Display a placeholder visualization
     st.subheader("Welcome to Stock Data Visualization Tool")
@@ -706,7 +810,7 @@ else:
     # Add feature highlights
     st.markdown("### 📊 Features")
     
-    feature_cols = st.columns(2)
+    feature_cols = st.columns(3)
     
     with feature_cols[0]:
         st.markdown("**Single Stock Analysis**")
@@ -721,3 +825,10 @@ else:
         st.markdown("- Normalized price view for easier comparison")
         st.markdown("- Correlation analysis between stocks")
         st.markdown("- Performance metrics table for all stocks")
+        
+    with feature_cols[2]:
+        st.markdown("**Watchlists**")
+        st.markdown("- Create custom watchlists")
+        st.markdown("- Save favorite stocks for quick access")
+        st.markdown("- Compare all stocks in a watchlist")
+        st.markdown("- Track performance across your portfolio")
