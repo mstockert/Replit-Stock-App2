@@ -50,6 +50,25 @@ def get_stock_data(ticker_symbol, period='1y'):
         
         # Get company info
         info = stock.info
+        
+        # Save search to history
+        save_search_to_history(ticker_symbol, 'single')
+        
+        # Cache data in database
+        try:
+            # Add stock info to the database
+            company_name = info.get('longName', ticker_symbol)
+            sector = info.get('sector', 'Unknown')
+            industry = info.get('industry', 'Unknown')
+            
+            # Add to database
+            db.add_stock(ticker_symbol, company_name, sector, industry)
+            
+            # Cache price data
+            cache_stock_data(ticker_symbol, hist)
+        except Exception as db_error:
+            st.warning(f"Note: Could not cache data in database: {db_error}")
+        
         return hist, info
     except Exception as e:
         st.error(f"An error occurred: {e}")
@@ -61,6 +80,10 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
     all_data = {}
     all_info = {}
     
+    # Save comparison search to history
+    comparison_query = ','.join(ticker_symbols)
+    save_search_to_history(comparison_query, 'comparison')
+    
     # Use a spinner to show progress
     with st.spinner(f'Fetching data for {", ".join(ticker_symbols)}...'):
         for ticker in ticker_symbols:
@@ -71,6 +94,21 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
                 if not hist.empty:
                     all_data[ticker] = hist
                     all_info[ticker] = stock.info
+                    
+                    # Cache data in database
+                    try:
+                        # Add stock info to the database
+                        company_name = stock.info.get('longName', ticker)
+                        sector = stock.info.get('sector', 'Unknown')
+                        industry = stock.info.get('industry', 'Unknown')
+                        
+                        # Add to database
+                        db.add_stock(ticker, company_name, sector, industry)
+                        
+                        # Cache price data
+                        cache_stock_data(ticker, hist)
+                    except Exception as db_error:
+                        print(f"Could not cache data for {ticker}: {db_error}")
                 else:
                     st.warning(f"No data found for ticker {ticker}. Skipping.")
             except Exception as e:
