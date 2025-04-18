@@ -485,17 +485,35 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
     all_data = {}
     all_info = {}
     
-    # Ensure ticker_symbols are individual symbols, not comma-separated strings
+    # Improved ticker symbol parsing
+    # First, handle if ticker_symbols is a string instead of a list
+    if isinstance(ticker_symbols, str):
+        # Split by commas and clean up
+        ticker_symbols = [t.strip() for t in ticker_symbols.split(",") if t.strip()]
+    
+    # Process the list to handle any nested comma-separated strings
     cleaned_tickers = []
     for ticker in ticker_symbols:
-        # If for some reason a ticker contains commas, split it
-        if ',' in ticker:
-            cleaned_tickers.extend([t.strip() for t in ticker.split(',') if t.strip()])
-        else:
-            cleaned_tickers.append(ticker.strip())
+        # Check if this item might contain multiple tickers
+        if isinstance(ticker, str):
+            if ',' in ticker:
+                # Split by commas and add each part
+                cleaned_tickers.extend([t.strip() for t in ticker.split(',') if t.strip()])
+            else:
+                # Also handle if there are spaces (sometimes used instead of commas)
+                if ' ' in ticker and len(ticker.split()) > 1:
+                    # This might be multiple tickers separated by spaces
+                    cleaned_tickers.extend([t.strip() for t in ticker.split() if t.strip()])
+                else:
+                    # Single ticker
+                    cleaned_tickers.append(ticker.strip())
     
-    # Use the cleaned list and make sure they're all uppercase
-    ticker_symbols = [t.upper() for t in cleaned_tickers if t]
+    # Make sure all tickers are uppercase and remove duplicates
+    ticker_symbols = list(set([t.upper() for t in cleaned_tickers if t]))
+    
+    # Log the parsed symbols for debugging - we'll use a more elegant notification
+    if ticker_symbols:
+        st.info(f"Processing these symbols: {', '.join(ticker_symbols)}")
     
     if not ticker_symbols:
         st.error("No valid ticker symbols provided.")
@@ -845,8 +863,21 @@ elif analysis_type == "Stock Comparison":
     
     st.session_state['compare_symbols'] = tickers_input
     
-    # Convert input to list and clean
-    tickers = [ticker.strip() for ticker in tickers_input.split(",") if ticker.strip()]
+    # Convert input to list and clean with improved parsing
+    # First handle commas
+    ticker_parts = [part.strip() for part in tickers_input.split(",") if part.strip()]
+    
+    # Then handle possible spaces (if user used spaces instead of commas)
+    tickers = []
+    for part in ticker_parts:
+        if ' ' in part and ',' not in part and len(part.split()) > 1:
+            # This might be multiple tickers separated by spaces
+            tickers.extend([t.strip() for t in part.split() if t.strip()])
+        else:
+            tickers.append(part.strip())
+    
+    # Remove any duplicates and ensure they're uppercase
+    tickers = list(set([ticker.upper() for ticker in tickers if ticker]))
     
     # Time period selection
     selected_period = st.sidebar.selectbox("Select Time Period", list(time_periods.keys()), index=4)
@@ -868,7 +899,17 @@ elif analysis_type == "Stock Comparison":
             if search['type'] == 'comparison' and ',' in search['query']:
                 if st.sidebar.button(f"🔄 {search['query']}", key=f"recent_{search['id']}"):
                     tickers_input = search['query']
-                    tickers = [ticker.strip() for ticker in tickers_input.split(",") if ticker.strip()]
+                    
+                    # Use the same improved parsing logic for recent searches
+                    ticker_parts = [part.strip() for part in tickers_input.split(",") if part.strip()]
+                    tickers = []
+                    for part in ticker_parts:
+                        if ' ' in part and ',' not in part and len(part.split()) > 1:
+                            tickers.extend([t.strip() for t in part.split() if t.strip()])
+                        else:
+                            tickers.append(part.strip())
+                    tickers = list(set([t.upper() for t in tickers if t]))
+                    
                     st.session_state['compare_symbols'] = tickers_input
                     submit_button = True
     
