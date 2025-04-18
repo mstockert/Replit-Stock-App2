@@ -2040,20 +2040,20 @@ if submit_button:
                         '200-Day': {'column': 'MA200', 'color': '#2E55A5', 'width': 2.0}
                     }
                     
+                    # Always create a Plotly figure for the price
+                    fig_ma = go.Figure()
+                    
+                    # Always add the price trace
+                    fig_ma.add_trace(go.Scatter(
+                        x=hist_data_ma.index,
+                        y=hist_data_ma['Close'],
+                        mode='lines',
+                        name='Close Price',
+                        line=dict(color='black', width=1.5)
+                    ))
+                    
+                    # Add selected Moving Averages if any are chosen
                     if selected_ma_periods:
-                        # Create Plotly figure for the price and Moving Averages
-                        fig_ma = go.Figure()
-                        
-                        # Add price trace
-                        fig_ma.add_trace(go.Scatter(
-                            x=hist_data_ma.index,
-                            y=hist_data_ma['Close'],
-                            mode='lines',
-                            name='Close Price',
-                            line=dict(color='black', width=1.5)
-                        ))
-                        
-                        # Add selected Moving Averages
                         for period in selected_ma_periods:
                             props = ma_properties[period]
                             fig_ma.add_trace(go.Scatter(
@@ -2064,26 +2064,32 @@ if submit_button:
                                 line=dict(color=props['color'], width=props['width'])
                             ))
                         
-                        # Update layout
-                        fig_ma.update_layout(
-                            title=f"{company_name} Price with Selected Moving Averages",
-                            xaxis_title='Date',
-                            yaxis_title='Price ($)',
-                            height=600,
-                            legend=dict(
-                                orientation="h",
-                                yanchor="bottom",
-                                y=1.02,
-                                xanchor="right",
-                                x=1
-                            ),
-                            hovermode="x unified"
-                        )
-                        
-                        # Display the interactive chart
-                        st.plotly_chart(fig_ma, use_container_width=True)
+                        chart_title = f"{company_name} Price with Selected Moving Averages"
+                    else:
+                        # Just show price chart if no MAs selected
+                        chart_title = f"{company_name} Price Chart"
                     
-                        # Also create a simple Streamlit chart as backup
+                    # Update layout
+                    fig_ma.update_layout(
+                        title=chart_title,
+                        xaxis_title='Date',
+                        yaxis_title='Price ($)',
+                        height=600,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="right",
+                            x=1
+                        ),
+                        hovermode="x unified"
+                    )
+                    
+                    # Always display the chart
+                    st.plotly_chart(fig_ma, use_container_width=True)
+                    
+                    # Create a simple Streamlit chart as backup only if some MAs are selected
+                    if selected_ma_periods:
                         st.subheader("Moving Averages (Simple Chart)")
                         
                         # Prepare data for Streamlit's native chart
@@ -2096,8 +2102,6 @@ if submit_button:
                         
                         # Display the simple chart
                         st.line_chart(simple_data)
-                    else:
-                        st.warning("Please select at least one Moving Average period to display the chart.")
                 
                 with tab2:
                     st.subheader("Technical Indicators")
@@ -2330,30 +2334,8 @@ if submit_button:
                             line=dict(color='red', width=1.2)
                         ))
                         
-                        # Try to add a fill between the bands
-                        try:
-                            # Create a fill by using two separate traces
-                            bb_fig.add_trace(go.Scatter(
-                                x=hist_data.index,
-                                y=bb_upper,
-                                fill=None,
-                                mode='lines',
-                                line=dict(width=0.1, color='rgba(0,0,0,0)'),
-                                showlegend=False
-                            ))
-                            
-                            bb_fig.add_trace(go.Scatter(
-                                x=hist_data.index,
-                                y=bb_lower,
-                                fill='tonexty',
-                                mode='lines',
-                                line=dict(width=0.1, color='rgba(0,0,0,0)'),
-                                fillcolor='rgba(173, 216, 230, 0.2)',
-                                showlegend=False
-                            ))
-                        except:
-                            # If fill doesn't work, continue without it
-                            pass
+                        # Simplified approach - don't use fill between bands
+                        # The fill between bands can cause rendering issues in some cases
                         
                         # Update layout
                         bb_fig.update_layout(
