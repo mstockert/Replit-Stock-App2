@@ -1019,6 +1019,182 @@ def create_stochastic_chart(data):
     
     return fig
 
+def create_adx_chart(data):
+    """Create an Average Directional Index (ADX) chart"""
+    fig = go.Figure()
+    
+    # Add price chart (use candlestick)
+    fig.add_trace(go.Candlestick(
+        x=data.index,
+        open=data['Open'],
+        high=data['High'],
+        low=data['Low'],
+        close=data['Close'],
+        name='Price',
+        increasing_line_color='green',
+        decreasing_line_color='red',
+        xaxis='x',
+        yaxis='y'
+    ))
+    
+    # Add ADX line in a separate subplot
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['ADX'],
+        mode='lines',
+        name='ADX',
+        line=dict(color='purple', width=1.5),
+        xaxis='x',
+        yaxis='y2'
+    ))
+    
+    # Add threshold lines for ADX
+    fig.add_shape(
+        type="line",
+        x0=data.index[0],
+        y0=25,
+        x1=data.index[-1],
+        y1=25,
+        line=dict(color="red", width=1, dash="dash"),
+        xref="x",
+        yref="y2"
+    )
+    
+    fig.add_shape(
+        type="line",
+        x0=data.index[0],
+        y0=20,
+        x1=data.index[-1],
+        y1=20,
+        line=dict(color="orange", width=1, dash="dash"),
+        xref="x",
+        yref="y2"
+    )
+    
+    # Update layout to include dual y-axes
+    fig.update_layout(
+        title="Average Directional Index (ADX)",
+        xaxis=dict(
+            title="Date",
+            rangeslider=dict(visible=False)
+        ),
+        yaxis=dict(
+            title="Price",
+            domain=[0.3, 1.0]
+        ),
+        yaxis2=dict(
+            title="ADX",
+            anchor="x",
+            overlaying="y",
+            side="right",
+            domain=[0, 0.25],
+            range=[0, 50]  # ADX typically ranges from 0 to 50
+        ),
+        height=600,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    return fig
+
+def create_cci_chart(data):
+    """Create a Commodity Channel Index (CCI) chart"""
+    fig = go.Figure()
+    
+    # Add price chart (use candlestick)
+    fig.add_trace(go.Candlestick(
+        x=data.index,
+        open=data['Open'],
+        high=data['High'],
+        low=data['Low'],
+        close=data['Close'],
+        name='Price',
+        increasing_line_color='green',
+        decreasing_line_color='red',
+        xaxis='x',
+        yaxis='y'
+    ))
+    
+    # Add CCI line in a separate subplot
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['CCI'],
+        mode='lines',
+        name='CCI',
+        line=dict(color='blue', width=1.5),
+        xaxis='x',
+        yaxis='y2'
+    ))
+    
+    # Add overbought and oversold lines
+    fig.add_shape(
+        type="line",
+        x0=data.index[0],
+        y0=100,
+        x1=data.index[-1],
+        y1=100,
+        line=dict(color="red", width=1, dash="dash"),
+        xref="x",
+        yref="y2"
+    )
+    
+    fig.add_shape(
+        type="line",
+        x0=data.index[0],
+        y0=-100,
+        x1=data.index[-1],
+        y1=-100,
+        line=dict(color="green", width=1, dash="dash"),
+        xref="x",
+        yref="y2"
+    )
+    
+    fig.add_shape(
+        type="line",
+        x0=data.index[0],
+        y0=0,
+        x1=data.index[-1],
+        y1=0,
+        line=dict(color="gray", width=1, dash="dot"),
+        xref="x",
+        yref="y2"
+    )
+    
+    # Update layout to include dual y-axes
+    fig.update_layout(
+        title="Commodity Channel Index (CCI)",
+        xaxis=dict(
+            title="Date",
+            rangeslider=dict(visible=False)
+        ),
+        yaxis=dict(
+            title="Price",
+            domain=[0.3, 1.0]
+        ),
+        yaxis2=dict(
+            title="CCI",
+            anchor="x",
+            overlaying="y",
+            side="right",
+            domain=[0, 0.25]
+        ),
+        height=600,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    
+    return fig
+
 def create_comparison_chart(stock_data_dict, time_period, normalize=False):
     """Create a chart comparing multiple stocks over time with timezone handling"""
     fig = go.Figure()
@@ -1631,7 +1807,7 @@ if submit_button:
                         indicators_data = calculate_technical_indicators(hist_data)
                         
                         # Create indicator selection
-                        indicator_options = ["RSI", "MACD", "Bollinger Bands", "Stochastic Oscillator"]
+                        indicator_options = ["RSI", "MACD", "Bollinger Bands", "Stochastic Oscillator", "ADX", "CCI"]
                         selected_indicators = st.multiselect("Select Technical Indicators", indicator_options, default=["RSI", "MACD"])
                         
                         if "RSI" in selected_indicators:
@@ -1678,6 +1854,28 @@ if submit_button:
                             """)
                             fig_stoch = create_stochastic_chart(indicators_data)
                             st.plotly_chart(fig_stoch, use_container_width=True)
+                            
+                        if "ADX" in selected_indicators:
+                            st.markdown("### Average Directional Index (ADX)")
+                            st.markdown("""
+                            ADX is used to determine the strength of a trend, regardless of its direction.
+                            - Values above 25 indicate a strong trend
+                            - Values below 20 indicate a weak or non-existent trend
+                            - ADX does not show trend direction, only strength
+                            """)
+                            fig_adx = create_adx_chart(indicators_data)
+                            st.plotly_chart(fig_adx, use_container_width=True)
+                            
+                        if "CCI" in selected_indicators:
+                            st.markdown("### Commodity Channel Index (CCI)")
+                            st.markdown("""
+                            CCI measures the current price level relative to an average price level over a given period.
+                            - Values above +100 suggest an overbought condition
+                            - Values below -100 suggest an oversold condition
+                            - CCI can be used to identify new trends or extreme conditions
+                            """)
+                            fig_cci = create_cci_chart(indicators_data)
+                            st.plotly_chart(fig_cci, use_container_width=True)
                 
                 with tab3:
                     st.subheader("Key Financial Metrics")
@@ -1871,7 +2069,7 @@ else:
     with feature_cols[0]:
         st.markdown("**Single Stock Analysis**")
         st.markdown("- Interactive price charts with candlestick patterns")
-        st.markdown("- Advanced technical indicators (RSI, MACD, Bollinger Bands)")
+        st.markdown("- Advanced technical indicators (RSI, MACD, Bollinger Bands, Stochastic, ADX, CCI)")
         st.markdown("- Key financial metrics and company information")
         st.markdown("- Historical data available for download")
     
