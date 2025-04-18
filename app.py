@@ -6,21 +6,92 @@ from datetime import datetime, timedelta
 import numpy as np
 import os
 import time
+import requests  # For direct API access if needed
+import json
 
-# Import yfinance
+# Import yfinance with monkey patches to prevent batch requests
 import yfinance as yf
 
-# Add more robust error handling to yfinance operations
-def safe_get_ticker_info(ticker_symbol):
+# Aggressive monkey-patching to prevent any batch requests in yfinance
+# This will intercept any attempts to make batch requests and force single requests instead
+
+# Original download method reference
+original_download = yf.download
+
+def patched_download(tickers, *args, **kwargs):
     """
-    Safely get ticker info with proper error handling.
+    Patched version of yf.download that forces single ticker downloads
+    """
+    # Force group_by to 'ticker' to ensure we get a dict keyed by ticker
+    kwargs['group_by'] = 'ticker'
+    
+    # Check if tickers is a string with commas (a list of tickers)
+    if isinstance(tickers, str) and ',' in tickers:
+        st.warning(f"Intercepted batch request for {tickers}. Processing one by one instead.")
+        
+        # Split the tickers and process one by one
+        ticker_list = [t.strip() for t in tickers.split(',') if t.strip()]
+        result_data = {}
+        
+        for i, single_ticker in enumerate(ticker_list):
+            if i > 0:
+                time.sleep(1)  # Delay between requests
+            
+            try:
+                # Call the original download with just one ticker
+                single_result = original_download(single_ticker, *args, **kwargs)
+                
+                # If it's a DataFrame (not a dict), wrap it in a dict
+                if isinstance(single_result, pd.DataFrame):
+                    result_data[single_ticker] = single_result
+                else:
+                    # It's already a dict, merge it
+                    result_data.update(single_result)
+            except Exception as e:
+                st.error(f"Error downloading data for {single_ticker}: {e}")
+        
+        if not result_data:
+            st.error("Failed to download data for any of the requested tickers")
+            return pd.DataFrame()  # Return empty DataFrame
+            
+        return result_data
+    
+    # If it's a single ticker or already a list, pass through to original function
+    return original_download(tickers, *args, **kwargs)
+
+# Replace the download function with our patched version
+yf.download = patched_download
+
+# Also patch the Ticker.info property which is another source of batch requests
+original_info_property = yf.Ticker.info
+
+def patched_info_property(self):
+    """
+    Patched version of the info property that checks for batch requests
     """
     try:
-        ticker = yf.Ticker(ticker_symbol)
-        return ticker
+        # Check for problematic characters in the symbol
+        symbol = self.ticker
+        if ',' in symbol:
+            st.warning(f"Intercepted potential batch request in info for {symbol}")
+            
+            # In this case, we'll just return minimal info
+            return {'symbol': symbol}
+        
+        # For single tickers, proceed normally but with error handling
+        try:
+            return original_info_property.__get__(self)
+        except Exception as e:
+            st.error(f"Error getting info for {symbol}: {e}")
+            # Return minimal valid info to prevent cascading errors
+            return {'symbol': symbol}
+            
     except Exception as e:
-        st.error(f"Error creating ticker object for {ticker_symbol}: {e}")
-        return None
+        st.error(f"Unexpected error in patched info: {e}")
+        return {}
+
+# Apply the patch
+yf.Ticker.info = property(patched_info_property)
 
 # Import database modules
 import database as db
