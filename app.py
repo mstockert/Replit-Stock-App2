@@ -1957,30 +1957,80 @@ if submit_button:
                         # Calculate all technical indicators
                         indicators_data = calculate_technical_indicators(hist_data)
                         
-                        # Create indicator selection with checkboxes instead of multiselect
+                        # Create indicator selection with a form to prevent page refresh on each checkbox click
                         st.subheader("Select Technical Indicators")
-                        col1, col2 = st.columns(2)
                         
-                        with col1:
-                            show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True)
-                            show_macd = st.checkbox("MACD", value=True)
-                            show_bollinger = st.checkbox("Bollinger Bands", value=False)
-                            show_ma200 = st.checkbox("200-day Moving Average", value=False)
+                        # Initialize session state for checkboxes if they don't exist
+                        if 'show_rsi' not in st.session_state:
+                            st.session_state['show_rsi'] = True
+                        if 'show_macd' not in st.session_state:
+                            st.session_state['show_macd'] = True
+                        if 'show_bollinger' not in st.session_state:
+                            st.session_state['show_bollinger'] = False
+                        if 'show_ma200' not in st.session_state:
+                            st.session_state['show_ma200'] = False
+                        if 'show_stochastic' not in st.session_state:
+                            st.session_state['show_stochastic'] = False
+                        if 'show_adx' not in st.session_state:
+                            st.session_state['show_adx'] = False
+                        if 'show_cci' not in st.session_state:
+                            st.session_state['show_cci'] = False
                             
-                        with col2:
-                            show_stochastic = st.checkbox("Stochastic Oscillator", value=False)
-                            show_adx = st.checkbox("ADX (Average Directional Index)", value=False)
-                            show_cci = st.checkbox("CCI (Commodity Channel Index)", value=False)
+                        # Create a form for indicators
+                        with st.form(key="indicator_form"):
+                            col1, col2 = st.columns(2)
                             
-                        # Create a list of selected indicators based on checkboxes
+                            with col1:
+                                show_rsi = st.checkbox("RSI (Relative Strength Index)", 
+                                                      value=st.session_state['show_rsi'],
+                                                      key="rsi")
+                                show_macd = st.checkbox("MACD", 
+                                                       value=st.session_state['show_macd'],
+                                                       key="macd")
+                                show_bollinger = st.checkbox("Bollinger Bands", 
+                                                           value=st.session_state['show_bollinger'],
+                                                           key="bollinger")
+                                show_ma200 = st.checkbox("200-day Moving Average", 
+                                                        value=st.session_state['show_ma200'],
+                                                        key="ma200")
+                                
+                            with col2:
+                                show_stochastic = st.checkbox("Stochastic Oscillator", 
+                                                            value=st.session_state['show_stochastic'],
+                                                            key="stochastic")
+                                show_adx = st.checkbox("ADX (Average Directional Index)", 
+                                                      value=st.session_state['show_adx'],
+                                                      key="adx")
+                                show_cci = st.checkbox("CCI (Commodity Channel Index)", 
+                                                      value=st.session_state['show_cci'],
+                                                      key="cci")
+                            
+                            # Submit button for the form
+                            submitted = st.form_submit_button("Update Indicators")
+                            
+                            if submitted:
+                                # Save selections to session state
+                                st.session_state['show_rsi'] = show_rsi
+                                st.session_state['show_macd'] = show_macd
+                                st.session_state['show_bollinger'] = show_bollinger
+                                st.session_state['show_ma200'] = show_ma200
+                                st.session_state['show_stochastic'] = show_stochastic
+                                st.session_state['show_adx'] = show_adx
+                                st.session_state['show_cci'] = show_cci
+                            
+                        # Create a list of selected indicators based on session state values
                         selected_indicators = []
-                        if show_rsi: selected_indicators.append("RSI")
-                        if show_macd: selected_indicators.append("MACD")
-                        if show_bollinger: selected_indicators.append("Bollinger Bands")
-                        if show_stochastic: selected_indicators.append("Stochastic Oscillator")
-                        if show_adx: selected_indicators.append("ADX")
-                        if show_cci: selected_indicators.append("CCI")
-                        if show_ma200: selected_indicators.append("MA200")
+                        if st.session_state['show_rsi']: selected_indicators.append("RSI")
+                        if st.session_state['show_macd']: selected_indicators.append("MACD")
+                        if st.session_state['show_bollinger']: selected_indicators.append("Bollinger Bands")
+                        if st.session_state['show_stochastic']: selected_indicators.append("Stochastic Oscillator")
+                        if st.session_state['show_adx']: selected_indicators.append("ADX")
+                        if st.session_state['show_cci']: selected_indicators.append("CCI")
+                        if st.session_state['show_ma200']: selected_indicators.append("MA200")
+                        
+                        # Add a status message about selected indicators
+                        if selected_indicators:
+                            st.success(f"Displaying the following indicators: {', '.join(selected_indicators)}")
                         
                         if "RSI" in selected_indicators:
                             st.markdown("### Relative Strength Index (RSI)")
