@@ -1981,107 +1981,120 @@ if submit_button:
                     # Simple moving average
                     st.subheader("Moving Averages")
                     
-                    # Instead of multiselect, use individual checkboxes for better state management
-                    cols = st.columns(3)
-                    with cols[0]:
-                        show_ma20 = st.checkbox("20-Day MA", value=True, key="ma20_check")
-                        show_ma50 = st.checkbox("50-Day MA", value=True, key="ma50_check")
-                    with cols[1]:
-                        show_ma100 = st.checkbox("100-Day MA", value=False, key="ma100_check")
-                        show_ma200 = st.checkbox("200-Day MA", value=True, key="ma200_check")
-                    with cols[2]:
-                        show_ma5 = st.checkbox("5-Day MA", value=False, key="ma5_check")
-                        show_ma10 = st.checkbox("10-Day MA", value=False, key="ma10_check")
+                    # Static chart approach with pre-determined options
+                    st.write("""
+                    ### Moving Average Periods
+                    Select which Moving Averages to show in the static chart below. 
+                    (Showing multiple MAs provides better insight into trend direction)
+                    """)
                     
-                    # Calculate all SMAs at once
-                    hist_data_sma = hist_data.copy()
-                    hist_data_sma['MA5'] = hist_data_sma['Close'].rolling(window=5).mean()
-                    hist_data_sma['MA10'] = hist_data_sma['Close'].rolling(window=10).mean()
-                    hist_data_sma['MA20'] = hist_data_sma['Close'].rolling(window=20).mean()
-                    hist_data_sma['MA50'] = hist_data_sma['Close'].rolling(window=50).mean()
-                    hist_data_sma['MA100'] = hist_data_sma['Close'].rolling(window=100).mean()
-                    hist_data_sma['MA200'] = hist_data_sma['Close'].rolling(window=200).mean()
+                    # Use a static approach - render the chart with all MAs pre-calculated
+                    # Just use session state to persist the selection
+                    # Initialize session state if needed
+                    if 'ma_selections' not in st.session_state:
+                        st.session_state.ma_selections = {
+                            '5-Day': False,
+                            '10-Day': False,
+                            '20-Day': True,
+                            '50-Day': True, 
+                            '100-Day': False,
+                            '200-Day': True
+                        }
+                        
+                    # Create a more reliable grid of buttons
+                    col1, col2, col3 = st.columns(3)
                     
-                    # Create color mapping
-                    colors = {
-                        'MA5': '#FF9800',      # Orange
-                        'MA10': '#9C27B0',     # Purple
-                        'MA20': '#17BECF',     # Light blue (cyan)
-                        'MA50': '#B6267E',     # Pink/magenta
-                        'MA100': '#2196F3',    # Blue
-                        'MA200': '#2E55A5'     # Dark blue
-                    }
+                    # Create a toggle function that updates session state
+                    def toggle_ma(period):
+                        st.session_state.ma_selections[period] = not st.session_state.ma_selections[period]
                     
-                    # Create figure
-                    fig_sma = go.Figure()
+                    # Create the buttons
+                    with col1:
+                        if st.button('🔍 20-Day MA', 
+                                     help="Toggle 20-Day MA visibility",
+                                     type="primary" if st.session_state.ma_selections['20-Day'] else "secondary"):
+                            toggle_ma('20-Day')
+                            
+                        if st.button('🔍 50-Day MA', 
+                                     help="Toggle 50-Day MA visibility",
+                                     type="primary" if st.session_state.ma_selections['50-Day'] else "secondary"):
+                            toggle_ma('50-Day')
+                            
+                    with col2:
+                        if st.button('🔍 100-Day MA', 
+                                     help="Toggle 100-Day MA visibility",
+                                     type="primary" if st.session_state.ma_selections['100-Day'] else "secondary"):
+                            toggle_ma('100-Day')
+                            
+                        if st.button('🔍 200-Day MA', 
+                                     help="Toggle 200-Day MA visibility",
+                                     type="primary" if st.session_state.ma_selections['200-Day'] else "secondary"):
+                            toggle_ma('200-Day')
+                            
+                    with col3:
+                        if st.button('🔍 5-Day MA', 
+                                     help="Toggle 5-Day MA visibility",
+                                     type="primary" if st.session_state.ma_selections['5-Day'] else "secondary"):
+                            toggle_ma('5-Day')
+                            
+                        if st.button('🔍 10-Day MA', 
+                                     help="Toggle 10-Day MA visibility",
+                                     type="primary" if st.session_state.ma_selections['10-Day'] else "secondary"):
+                            toggle_ma('10-Day')
                     
-                    # Add price trace - use line chart instead of candlestick for stability
-                    fig_sma.add_trace(go.Scatter(
-                        x=hist_data_sma.index,
-                        y=hist_data_sma['Close'],
+                    # Show which MAs are currently selected
+                    selected_periods = [period for period, is_selected in st.session_state.ma_selections.items() if is_selected]
+                    if selected_periods:
+                        st.success(f"Showing: {', '.join(selected_periods)}")
+                    else:
+                        st.warning("No Moving Averages selected. Please select at least one.")
+                    
+                    # Calculate all MAs at once regardless of selection
+                    hist_data_ma = hist_data.copy()
+                    hist_data_ma['MA5'] = hist_data_ma['Close'].rolling(window=5).mean()
+                    hist_data_ma['MA10'] = hist_data_ma['Close'].rolling(window=10).mean()
+                    hist_data_ma['MA20'] = hist_data_ma['Close'].rolling(window=20).mean()
+                    hist_data_ma['MA50'] = hist_data_ma['Close'].rolling(window=50).mean()
+                    hist_data_ma['MA100'] = hist_data_ma['Close'].rolling(window=100).mean()
+                    hist_data_ma['MA200'] = hist_data_ma['Close'].rolling(window=200).mean()
+                    
+                    # Create a Plotly figure - static approach
+                    fig_ma = go.Figure()
+                    
+                    # Always add the price
+                    fig_ma.add_trace(go.Scatter(
+                        x=hist_data_ma.index,
+                        y=hist_data_ma['Close'],
                         mode='lines',
                         name='Close Price',
                         line=dict(color='black', width=1.5)
                     ))
                     
-                    # Add the selected MAs
-                    if show_ma5:
-                        fig_sma.add_trace(go.Scatter(
-                            x=hist_data_sma.index,
-                            y=hist_data_sma['MA5'],
-                            mode='lines',
-                            name='5-Day MA',
-                            line=dict(color=colors['MA5'], width=1.5)
-                        ))
+                    # Define a mapping for colors and other properties
+                    ma_properties = {
+                        '5-Day': {'column': 'MA5', 'color': '#FF9800', 'width': 1.5},
+                        '10-Day': {'column': 'MA10', 'color': '#9C27B0', 'width': 1.5},
+                        '20-Day': {'column': 'MA20', 'color': '#17BECF', 'width': 1.5},
+                        '50-Day': {'column': 'MA50', 'color': '#B6267E', 'width': 1.5},
+                        '100-Day': {'column': 'MA100', 'color': '#2196F3', 'width': 1.5},
+                        '200-Day': {'column': 'MA200', 'color': '#2E55A5', 'width': 2.0}
+                    }
                     
-                    if show_ma10:
-                        fig_sma.add_trace(go.Scatter(
-                            x=hist_data_sma.index,
-                            y=hist_data_sma['MA10'],
-                            mode='lines',
-                            name='10-Day MA',
-                            line=dict(color=colors['MA10'], width=1.5)
-                        ))
+                    # Add traces for each selected MA
+                    for period, is_selected in st.session_state.ma_selections.items():
+                        if is_selected:
+                            props = ma_properties[period]
+                            fig_ma.add_trace(go.Scatter(
+                                x=hist_data_ma.index,
+                                y=hist_data_ma[props['column']],
+                                mode='lines',
+                                name=f'{period} MA',
+                                line=dict(color=props['color'], width=props['width'])
+                            ))
                     
-                    if show_ma20:
-                        fig_sma.add_trace(go.Scatter(
-                            x=hist_data_sma.index,
-                            y=hist_data_sma['MA20'],
-                            mode='lines',
-                            name='20-Day MA',
-                            line=dict(color=colors['MA20'], width=1.5)
-                        ))
-                    
-                    if show_ma50:
-                        fig_sma.add_trace(go.Scatter(
-                            x=hist_data_sma.index,
-                            y=hist_data_sma['MA50'],
-                            mode='lines',
-                            name='50-Day MA',
-                            line=dict(color=colors['MA50'], width=1.5)
-                        ))
-                    
-                    if show_ma100:
-                        fig_sma.add_trace(go.Scatter(
-                            x=hist_data_sma.index,
-                            y=hist_data_sma['MA100'],
-                            mode='lines',
-                            name='100-Day MA',
-                            line=dict(color=colors['MA100'], width=1.5)
-                        ))
-                    
-                    if show_ma200:
-                        fig_sma.add_trace(go.Scatter(
-                            x=hist_data_sma.index,
-                            y=hist_data_sma['MA200'],
-                            mode='lines',
-                            name='200-Day MA',
-                            line=dict(color=colors['MA200'], width=2.0)
-                        ))
-                    
-                    # Update layout
-                    fig_sma.update_layout(
-                        title=f'{company_name} Price with Moving Averages',
+                    # Layout 
+                    fig_ma.update_layout(
+                        title=f"{company_name} Price with Moving Averages",
                         xaxis_title='Date',
                         yaxis_title='Price ($)',
                         height=600,
@@ -2091,39 +2104,113 @@ if submit_button:
                             y=1.02,
                             xanchor="right",
                             x=1
-                        ),
-                        hovermode="x unified"
+                        )
                     )
                     
-                    # Display Plotly chart
-                    st.plotly_chart(fig_sma, use_container_width=True)
+                    # Show the chart
+                    st.plotly_chart(fig_ma, use_container_width=True)
+                    
+                    # Also add a simplified Streamlit chart as a backup
+                    st.subheader("Moving Averages (Simple Chart)")
+                    st.write("Alternative visualization with Streamlit's native chart:")
+                    
+                    # Prepare data for the simpler chart
+                    simple_data = pd.DataFrame({'Price': hist_data_ma['Close']})
+                    for period, is_selected in st.session_state.ma_selections.items():
+                        if is_selected:
+                            props = ma_properties[period]
+                            simple_data[f'{period} MA'] = hist_data_ma[props['column']]
+                            
+                    # Display the simpler chart
+                    st.line_chart(simple_data)
                 
                 with tab2:
                     st.subheader("Technical Indicators")
                     
-                    # Use checkboxes instead of multiselect for more reliable state management
-                    st.write("Select Technical Indicators to Display:")
+                    # Use buttons for more reliable state management instead of checkboxes
+                    st.write("### Toggle Technical Indicators")
                     
-                    # Create a 2x3 grid of checkboxes
+                    # Function to toggle indicator state
+                    def toggle_indicator(indicator_name):
+                        st.session_state.tech_indicators[indicator_name] = not st.session_state.tech_indicators[indicator_name]
+                    
+                    # Create a 2x3 grid of buttons
                     col1, col2, col3 = st.columns(3)
                     
                     with col1:
-                        show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True, key="rsi_check")
-                        show_macd = st.checkbox("MACD", value=True, key="macd_check")
-                    
+                        if st.button('📊 RSI', 
+                                    help="Toggle RSI indicator", 
+                                    type="primary" if st.session_state.tech_indicators['RSI'] else "secondary",
+                                    key="btn_rsi"):
+                            toggle_indicator('RSI')
+                        
+                        if st.button('📊 MACD', 
+                                    help="Toggle MACD indicator", 
+                                    type="primary" if st.session_state.tech_indicators['MACD'] else "secondary",
+                                    key="btn_macd"):
+                            toggle_indicator('MACD')
+                            
                     with col2:
-                        show_bollinger = st.checkbox("Bollinger Bands", value=True, key="bollinger_check")
-                        show_stochastic = st.checkbox("Stochastic Oscillator", value=False, key="stochastic_check")
-                    
+                        if st.button('📊 Bollinger Bands', 
+                                    help="Toggle Bollinger Bands", 
+                                    type="primary" if st.session_state.tech_indicators['Bollinger'] else "secondary",
+                                    key="btn_bb"):
+                            toggle_indicator('Bollinger')
+                            
+                        if st.button('📊 Stochastic', 
+                                    help="Toggle Stochastic Oscillator", 
+                                    type="primary" if st.session_state.tech_indicators['Stochastic'] else "secondary",
+                                    key="btn_stoch"):
+                            toggle_indicator('Stochastic')
+                            
                     with col3:
-                        show_adx = st.checkbox("ADX", value=False, key="adx_check")
-                        show_cci = st.checkbox("CCI", value=False, key="cci_check")
+                        if st.button('📊 ADX', 
+                                    help="Toggle ADX indicator", 
+                                    type="primary" if st.session_state.tech_indicators['ADX'] else "secondary",
+                                    key="btn_adx"):
+                            toggle_indicator('ADX')
+                            
+                        if st.button('📊 CCI', 
+                                    help="Toggle CCI indicator", 
+                                    type="primary" if st.session_state.tech_indicators['CCI'] else "secondary",
+                                    key="btn_cci"):
+                            toggle_indicator('CCI')
+                    
+                    # Show which indicators are active
+                    active_indicators = [name for name, is_active in st.session_state.tech_indicators.items() if is_active]
+                    if active_indicators:
+                        st.success(f"Active indicators: {', '.join(active_indicators)}")
+                    else:
+                        st.warning("No technical indicators selected. Please select at least one.")
                     
                     # Calculate all indicators upfront
                     indicators_data = calculate_technical_indicators(hist_data)
                     
-                    # Display selected indicators
-                    if show_rsi:
+                    # Initialize technical indicators session state if needed
+                    if 'tech_indicators' not in st.session_state:
+                        st.session_state.tech_indicators = {
+                            'RSI': True,
+                            'MACD': True,
+                            'Bollinger': True,
+                            'Stochastic': False,
+                            'ADX': False,
+                            'CCI': False
+                        }
+                    
+                    # Calculate all indicators at once to avoid recalculation
+                    # Use direct calculations rather than function calls
+                    st.subheader("Selected Technical Indicators")
+                    
+                    # Display a master toggle button
+                    if st.button('Toggle All Indicators'):
+                        # Toggle all to the opposite of current majority
+                        current_state = sum(st.session_state.tech_indicators.values()) > 3
+                        for key in st.session_state.tech_indicators:
+                            st.session_state.tech_indicators[key] = not current_state
+                    
+                    # For each indicator, calculate and display regardless of checkbox
+                    # RSI Indicator
+                    if st.session_state.tech_indicators['RSI']:
                         st.markdown("### Relative Strength Index (RSI)")
                         st.markdown("""
                         RSI measures the magnitude of recent price changes to evaluate overbought or oversold conditions.
@@ -2132,27 +2219,46 @@ if submit_button:
                         - The centerline at 50 can indicate the trend direction
                         """)
                         
-                        # Create RSI chart - either using function or direct approach
-                        try:
-                            rsi_fig = create_rsi_chart(indicators_data)
-                            st.plotly_chart(rsi_fig, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Error displaying RSI chart: {str(e)}")
-                            # Alternative direct calculation
-                            try:
-                                # Calculate RSI directly
-                                rsi_data = pd.DataFrame({
-                                    'RSI': indicators_data['RSI_14'] if 'RSI_14' in indicators_data.columns else 
-                                          ta.momentum.rsi(hist_data['Close'], window=14)
-                                })
-                                
-                                # Display with Streamlit chart
-                                st.subheader("RSI Chart (Simple)")
-                                st.line_chart(rsi_data)
-                            except:
-                                st.error("Could not create alternative RSI chart")
+                        # Calculate RSI directly
+                        rsi = ta.momentum.rsi(hist_data['Close'], window=14)
+                        
+                        # Create a simple Streamlit chart
+                        rsi_data = pd.DataFrame({'RSI': rsi})
+                        st.line_chart(rsi_data)
+                        
+                        # Also show with Plotly 
+                        rsi_fig = go.Figure()
+                        rsi_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=rsi,
+                            mode='lines',
+                            name='RSI (14)',
+                            line=dict(color='blue', width=1.5)
+                        ))
+                        
+                        # Add reference lines
+                        rsi_fig.add_hline(y=70, line_dash="dash", line_color="red", 
+                                        annotation_text="Overbought (70)", 
+                                        annotation_position="right")
+                        rsi_fig.add_hline(y=30, line_dash="dash", line_color="green", 
+                                        annotation_text="Oversold (30)", 
+                                        annotation_position="right")
+                        rsi_fig.add_hline(y=50, line_dash="dash", line_color="gray", 
+                                        annotation_text="Centerline (50)", 
+                                        annotation_position="right")
+                        
+                        rsi_fig.update_layout(
+                            title='Relative Strength Index (RSI)',
+                            xaxis_title='Date',
+                            yaxis_title='RSI',
+                            height=400,
+                            yaxis=dict(range=[0, 100])
+                        )
+                        
+                        st.plotly_chart(rsi_fig, use_container_width=True)
                     
-                    if show_macd:
+                    # MACD Indicator
+                    if st.session_state.tech_indicators['MACD']:
                         st.markdown("### Moving Average Convergence Divergence (MACD)")
                         st.markdown("""
                         MACD is a trend-following momentum indicator that shows the relationship between two moving averages.
@@ -2161,30 +2267,69 @@ if submit_button:
                         - The histogram shows the difference between MACD and signal line
                         """)
                         
-                        try:
-                            macd_fig = create_macd_chart(indicators_data)
-                            st.plotly_chart(macd_fig, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Error displaying MACD chart: {str(e)}")
-                            # Simple alternative
-                            try:
-                                # Direct calculation
-                                macd = ta.trend.macd(hist_data['Close'])
-                                macd_signal = ta.trend.macd_signal(hist_data['Close'])
-                                macd_hist = ta.trend.macd_diff(hist_data['Close'])
-                                
-                                macd_data = pd.DataFrame({
-                                    'MACD': macd,
-                                    'Signal': macd_signal,
-                                    'Histogram': macd_hist
-                                })
-                                
-                                st.subheader("MACD Chart (Simple)")
-                                st.line_chart(macd_data[['MACD', 'Signal']])
-                            except:
-                                st.error("Could not create alternative MACD chart")
+                        # Calculate MACD directly
+                        macd_line = ta.trend.macd(hist_data['Close'])
+                        signal_line = ta.trend.macd_signal(hist_data['Close'])
+                        macd_hist = ta.trend.macd_diff(hist_data['Close'])
+                        
+                        # Combine into a DataFrame
+                        macd_data = pd.DataFrame({
+                            'MACD': macd_line,
+                            'Signal': signal_line,
+                            'Histogram': macd_hist
+                        })
+                        
+                        # Show with Streamlit
+                        st.line_chart(macd_data[['MACD', 'Signal']])
+                        
+                        # Create Plotly MACD chart
+                        macd_fig = go.Figure()
+                        
+                        # Add MACD line
+                        macd_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=macd_line,
+                            mode='lines',
+                            name='MACD Line',
+                            line=dict(color='blue', width=1.5)
+                        ))
+                        
+                        # Add Signal line
+                        macd_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=signal_line,
+                            mode='lines', 
+                            name='Signal Line',
+                            line=dict(color='red', width=1.5)
+                        ))
+                        
+                        # Add histogram
+                        colors = ['green' if val >= 0 else 'red' for val in macd_hist]
+                        macd_fig.add_trace(go.Bar(
+                            x=hist_data.index,
+                            y=macd_hist,
+                            name='Histogram',
+                            marker_color=colors
+                        ))
+                        
+                        macd_fig.update_layout(
+                            title='MACD (12,26,9)',
+                            xaxis_title='Date',
+                            yaxis_title='MACD',
+                            height=400,
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1
+                            )
+                        )
+                        
+                        st.plotly_chart(macd_fig, use_container_width=True)
                     
-                    if show_bollinger:
+                    # Bollinger Bands
+                    if st.session_state.tech_indicators['Bollinger']:
                         st.markdown("### Bollinger Bands")
                         st.markdown("""
                         Bollinger Bands consist of a middle band (SMA) with two outer bands (standard deviations).
@@ -2193,76 +2338,113 @@ if submit_button:
                         - Bands narrowing can signal potential volatility increase
                         """)
                         
-                        # Direct calculation for Bollinger Bands
+                        # Calculate Bollinger Bands directly
                         window = 20
                         bb_sma = hist_data['Close'].rolling(window=window).mean()
                         bb_std = hist_data['Close'].rolling(window=window).std()
                         bb_upper = bb_sma + (bb_std * 2)
                         bb_lower = bb_sma - (bb_std * 2)
                         
-                        # Create a DataFrame for display
+                        # Create data for Streamlit's native chart
+                        st.subheader("Bollinger Bands - Simple Chart")
+                        
+                        # Create a basic dataframe
                         bb_data = pd.DataFrame({
                             'Price': hist_data['Close'],
-                            'SMA': bb_sma,
+                            'SMA20': bb_sma,
                             'Upper': bb_upper,
                             'Lower': bb_lower
                         })
                         
-                        # First show a simple chart
-                        st.subheader("Bollinger Bands (Streamlit Chart)")
+                        # Display simple chart first
                         st.line_chart(bb_data)
                         
-                        # Also try with Plotly
+                        # Create a Plotly chart for more flexibility
+                        st.subheader("Bollinger Bands - Interactive Chart")
+                        
+                        # Create a new figure
+                        bb_fig = go.Figure()
+                        
+                        # Add Close price
+                        bb_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=hist_data['Close'],
+                            mode='lines',
+                            name='Close Price',
+                            line=dict(color='blue', width=1.5)
+                        ))
+                        
+                        # Add the bands
+                        bb_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=bb_upper,
+                            mode='lines',
+                            name='Upper Band (+2σ)',
+                            line=dict(color='red', width=1.2)
+                        ))
+                        
+                        bb_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=bb_sma,
+                            mode='lines',
+                            name='20-Day SMA',
+                            line=dict(color='green', width=1.2)
+                        ))
+                        
+                        bb_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=bb_lower,
+                            mode='lines',
+                            name='Lower Band (-2σ)',
+                            line=dict(color='red', width=1.2)
+                        ))
+                        
+                        # Try to add a fill between the bands
                         try:
-                            bb_fig = go.Figure()
-                            
-                            # Add price line
-                            bb_fig.add_trace(go.Scatter(
-                                x=hist_data.index,
-                                y=hist_data['Close'],
-                                mode='lines',
-                                name='Close Price',
-                                line=dict(color='blue', width=1.5)
-                            ))
-                            
-                            # Add bands
+                            # Create a fill by using two separate traces
                             bb_fig.add_trace(go.Scatter(
                                 x=hist_data.index,
                                 y=bb_upper,
+                                fill=None,
                                 mode='lines',
-                                name='Upper Band',
-                                line=dict(color='red', width=1)
-                            ))
-                            
-                            bb_fig.add_trace(go.Scatter(
-                                x=hist_data.index,
-                                y=bb_sma,
-                                mode='lines',
-                                name='SMA (20)',
-                                line=dict(color='green', width=1)
+                                line=dict(width=0.1, color='rgba(0,0,0,0)'),
+                                showlegend=False
                             ))
                             
                             bb_fig.add_trace(go.Scatter(
                                 x=hist_data.index,
                                 y=bb_lower,
+                                fill='tonexty',
                                 mode='lines',
-                                name='Lower Band',
-                                line=dict(color='red', width=1)
+                                line=dict(width=0.1, color='rgba(0,0,0,0)'),
+                                fillcolor='rgba(173, 216, 230, 0.2)',
+                                showlegend=False
                             ))
-                            
-                            bb_fig.update_layout(
-                                title='Bollinger Bands',
-                                xaxis_title='Date',
-                                yaxis_title='Price',
-                                height=400
-                            )
-                            
-                            st.subheader("Bollinger Bands (Plotly Chart)")
-                            st.plotly_chart(bb_fig, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Error creating Plotly Bollinger Bands chart: {str(e)}")
+                        except:
+                            # If fill doesn't work, continue without it
+                            pass
+                        
+                        # Update layout
+                        bb_fig.update_layout(
+                            title='Bollinger Bands (20,2)',
+                            xaxis_title='Date',
+                            yaxis_title='Price',
+                            height=450,
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1
+                            ),
+                            hovermode="x unified"
+                        )
+                        
+                        # Display the chart
+                        st.plotly_chart(bb_fig, use_container_width=True)
                     
-                    if show_stochastic:
+                    # Stochastic oscillator
+                    if st.session_state.tech_indicators['Stochastic']:
                         st.markdown("### Stochastic Oscillator")
                         st.markdown("""
                         The Stochastic Oscillator compares a stock's closing price to its price range over a period.
@@ -2272,27 +2454,70 @@ if submit_button:
                         - %K line crossing below %D line is a potential sell signal
                         """)
                         
-                        try:
-                            stoch_fig = create_stochastic_chart(indicators_data)
-                            st.plotly_chart(stoch_fig, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Error displaying Stochastic chart: {str(e)}")
-                            # Alternative
-                            try:
-                                stoch_k = ta.momentum.stoch(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
-                                stoch_d = ta.momentum.stoch_signal(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
-                                
-                                stoch_data = pd.DataFrame({
-                                    '%K': stoch_k,
-                                    '%D': stoch_d
-                                })
-                                
-                                st.subheader("Stochastic Oscillator (Simple)")
-                                st.line_chart(stoch_data)
-                            except:
-                                st.error("Could not create alternative Stochastic chart")
+                        # Calculate Stochastic directly
+                        stoch_k = ta.momentum.stoch(high=hist_data['High'], 
+                                                 low=hist_data['Low'], 
+                                                 close=hist_data['Close'])
+                        stoch_d = ta.momentum.stoch_signal(high=hist_data['High'], 
+                                                        low=hist_data['Low'], 
+                                                        close=hist_data['Close'])
+                        
+                        # Show with Streamlit native chart
+                        stoch_data = pd.DataFrame({
+                            '%K': stoch_k,
+                            '%D': stoch_d
+                        })
+                        
+                        st.line_chart(stoch_data)
+                        
+                        # Create a Plotly chart 
+                        stoch_fig = go.Figure()
+                        
+                        # Add K line
+                        stoch_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=stoch_k,
+                            mode='lines',
+                            name='%K',
+                            line=dict(color='blue', width=1.5)
+                        ))
+                        
+                        # Add D line
+                        stoch_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=stoch_d,
+                            mode='lines',
+                            name='%D',
+                            line=dict(color='red', width=1.5)
+                        ))
+                        
+                        # Add reference lines
+                        stoch_fig.add_hline(y=80, line_dash="dash", line_color="red", 
+                                      annotation_text="Overbought (80)", 
+                                      annotation_position="right")
+                        stoch_fig.add_hline(y=20, line_dash="dash", line_color="green", 
+                                      annotation_text="Oversold (20)", 
+                                      annotation_position="right")
+                        
+                        stoch_fig.update_layout(
+                            title='Stochastic Oscillator (14,3)',
+                            xaxis_title='Date',
+                            yaxis_title='Value',
+                            height=400,
+                            yaxis=dict(range=[0, 100]),
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1
+                            )
+                        )
+                        
+                        st.plotly_chart(stoch_fig, use_container_width=True)
                     
-                    if show_adx:
+                    # ADX (Average Directional Index)
+                    if st.session_state.tech_indicators['ADX']:
                         st.markdown("### Average Directional Index (ADX)")
                         st.markdown("""
                         ADX is used to determine the strength of a trend, regardless of its direction.
@@ -2301,25 +2526,52 @@ if submit_button:
                         - ADX does not show trend direction, only strength
                         """)
                         
-                        try:
-                            adx_fig = create_adx_chart(indicators_data)
-                            st.plotly_chart(adx_fig, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Error displaying ADX chart: {str(e)}")
-                            # Alternative
-                            try:
-                                adx = ta.trend.adx(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
-                                
-                                adx_data = pd.DataFrame({
-                                    'ADX': adx
-                                })
-                                
-                                st.subheader("ADX (Simple)")
-                                st.line_chart(adx_data)
-                            except:
-                                st.error("Could not create alternative ADX chart")
+                        # Calculate ADX directly
+                        adx = ta.trend.adx(high=hist_data['High'], 
+                                        low=hist_data['Low'], 
+                                        close=hist_data['Close'])
+                        
+                        # Create dataframe for display
+                        adx_data = pd.DataFrame({
+                            'ADX': adx
+                        })
+                        
+                        # Show with Streamlit native chart
+                        st.line_chart(adx_data)
+                        
+                        # Create Plotly chart
+                        adx_fig = go.Figure()
+                        
+                        # Add ADX line
+                        adx_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=adx,
+                            mode='lines',
+                            name='ADX',
+                            line=dict(color='purple', width=1.5)
+                        ))
+                        
+                        # Add reference lines
+                        adx_fig.add_hline(y=25, line_dash="dash", line_color="green", 
+                                     annotation_text="Strong Trend (25)", 
+                                     annotation_position="right")
+                        
+                        adx_fig.add_hline(y=20, line_dash="dash", line_color="red", 
+                                     annotation_text="Weak Trend (20)", 
+                                     annotation_position="right")
+                        
+                        adx_fig.update_layout(
+                            title='Average Directional Index (ADX)',
+                            xaxis_title='Date',
+                            yaxis_title='ADX',
+                            height=400,
+                            yaxis=dict(range=[0, 60])
+                        )
+                        
+                        st.plotly_chart(adx_fig, use_container_width=True)
                     
-                    if show_cci:
+                    # CCI (Commodity Channel Index)
+                    if st.session_state.tech_indicators['CCI']:
                         st.markdown("### Commodity Channel Index (CCI)")
                         st.markdown("""
                         CCI measures the current price level relative to an average price level over a given period.
@@ -2328,23 +2580,50 @@ if submit_button:
                         - CCI can be used to identify new trends or extreme conditions
                         """)
                         
-                        try:
-                            cci_fig = create_cci_chart(indicators_data)
-                            st.plotly_chart(cci_fig, use_container_width=True)
-                        except Exception as e:
-                            st.error(f"Error displaying CCI chart: {str(e)}")
-                            # Alternative
-                            try:
-                                cci = ta.trend.cci(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
-                                
-                                cci_data = pd.DataFrame({
-                                    'CCI': cci
-                                })
-                                
-                                st.subheader("CCI (Simple)")
-                                st.line_chart(cci_data)
-                            except:
-                                st.error("Could not create alternative CCI chart")
+                        # Calculate CCI directly
+                        cci = ta.trend.cci(high=hist_data['High'], 
+                                        low=hist_data['Low'], 
+                                        close=hist_data['Close'])
+                        
+                        # Create dataframe for display
+                        cci_data = pd.DataFrame({
+                            'CCI': cci
+                        })
+                        
+                        # Show with Streamlit native chart
+                        st.line_chart(cci_data)
+                        
+                        # Create Plotly chart 
+                        cci_fig = go.Figure()
+                        
+                        # Add CCI line
+                        cci_fig.add_trace(go.Scatter(
+                            x=hist_data.index,
+                            y=cci,
+                            mode='lines',
+                            name='CCI',
+                            line=dict(color='blue', width=1.5)
+                        ))
+                        
+                        # Add reference lines
+                        cci_fig.add_hline(y=100, line_dash="dash", line_color="red", 
+                                     annotation_text="Overbought (+100)", 
+                                     annotation_position="right")
+                        cci_fig.add_hline(y=-100, line_dash="dash", line_color="green", 
+                                      annotation_text="Oversold (-100)", 
+                                      annotation_position="right")
+                        cci_fig.add_hline(y=0, line_dash="dash", line_color="gray", 
+                                     annotation_text="Centerline", 
+                                     annotation_position="right")
+                        
+                        cci_fig.update_layout(
+                            title='Commodity Channel Index (CCI)',
+                            xaxis_title='Date',
+                            yaxis_title='CCI',
+                            height=400
+                        )
+                        
+                        st.plotly_chart(cci_fig, use_container_width=True)
                             
 
                 
