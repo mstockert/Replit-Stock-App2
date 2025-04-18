@@ -38,6 +38,8 @@ Enter one or more stock symbols to get started!
 # Function to get stock data
 def get_stock_data(ticker_symbol, period='1y'):
     """Fetch stock data using yfinance"""
+    import time  # Add import for time.sleep
+    
     try:
         # Get stock data
         stock = yf.Ticker(ticker_symbol)
@@ -48,8 +50,16 @@ def get_stock_data(ticker_symbol, period='1y'):
             st.error(f"No data found for ticker {ticker_symbol}. Please check the symbol and try again.")
             return None, None
         
+        # Add a short delay before getting stock.info to avoid rate limiting
+        time.sleep(0.5)
+        
         # Get company info
         info = stock.info
+        
+        # Check if info is None or empty
+        if info is None or not info:
+            st.error(f"Could not retrieve information for {ticker_symbol}. Yahoo Finance API may be rate limiting.")
+            return None, None
         
         # Save search to history
         save_search_to_history(ticker_symbol, 'single')
@@ -77,6 +87,8 @@ def get_stock_data(ticker_symbol, period='1y'):
 # Function to get data for multiple stocks
 def get_multiple_stocks_data(ticker_symbols, period='1y'):
     """Fetch data for multiple stock symbols"""
+    import time  # Add import for time.sleep
+    
     all_data = {}
     all_info = {}
     
@@ -86,12 +98,21 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
     
     # Use a spinner to show progress
     with st.spinner(f'Fetching data for {", ".join(ticker_symbols)}...'):
-        for ticker in ticker_symbols:
+        for idx, ticker in enumerate(ticker_symbols):
             try:
+                # Add a delay between API calls to avoid rate limiting
+                # But don't delay before the first request
+                if idx > 0:
+                    time.sleep(1)  # 1 second delay between API calls
+                
                 stock = yf.Ticker(ticker)
                 hist = stock.history(period=period)
                 
-                if not hist.empty:
+                # Add an additional delay before getting stock.info
+                # as this is another API call
+                time.sleep(0.5)
+                
+                if not hist.empty and stock.info is not None:
                     all_data[ticker] = hist
                     all_info[ticker] = stock.info
                     
