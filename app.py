@@ -1957,66 +1957,56 @@ if submit_button:
                         # Calculate all technical indicators
                         indicators_data = calculate_technical_indicators(hist_data)
                         
-                        # Create indicator selection with a form to prevent page refresh on each checkbox click
+                        # Create indicator selection with simpler approach - direct checkboxes
                         st.subheader("Select Technical Indicators")
                         
-                        # Initialize session state for checkboxes if they don't exist
-                        if 'show_rsi' not in st.session_state:
-                            st.session_state['show_rsi'] = True
-                        if 'show_macd' not in st.session_state:
-                            st.session_state['show_macd'] = True
-                        if 'show_bollinger' not in st.session_state:
-                            st.session_state['show_bollinger'] = False
-                        if 'show_ma200' not in st.session_state:
-                            st.session_state['show_ma200'] = False
-                        if 'show_stochastic' not in st.session_state:
-                            st.session_state['show_stochastic'] = False
-                        if 'show_adx' not in st.session_state:
-                            st.session_state['show_adx'] = False
-                        if 'show_cci' not in st.session_state:
-                            st.session_state['show_cci'] = False
+                        # Create columns for better layout
+                        col1, col2 = st.columns(2)
+                        
+                        # Direct checkboxes with simple keys that update session state directly
+                        with col1:
+                            st.session_state['show_rsi'] = st.checkbox(
+                                "RSI (Relative Strength Index)", 
+                                value=True if 'show_rsi' not in st.session_state else st.session_state['show_rsi'],
+                                key="show_rsi"
+                            )
                             
-                        # Create a form for indicators
-                        with st.form(key="indicator_form"):
-                            col1, col2 = st.columns(2)
+                            st.session_state['show_macd'] = st.checkbox(
+                                "MACD", 
+                                value=True if 'show_macd' not in st.session_state else st.session_state['show_macd'],
+                                key="show_macd"
+                            )
                             
-                            with col1:
-                                show_rsi = st.checkbox("RSI (Relative Strength Index)", 
-                                                      value=st.session_state['show_rsi'],
-                                                      key="rsi")
-                                show_macd = st.checkbox("MACD", 
-                                                       value=st.session_state['show_macd'],
-                                                       key="macd")
-                                show_bollinger = st.checkbox("Bollinger Bands", 
-                                                           value=st.session_state['show_bollinger'],
-                                                           key="bollinger")
-                                show_ma200 = st.checkbox("200-day Moving Average", 
-                                                        value=st.session_state['show_ma200'],
-                                                        key="ma200")
-                                
-                            with col2:
-                                show_stochastic = st.checkbox("Stochastic Oscillator", 
-                                                            value=st.session_state['show_stochastic'],
-                                                            key="stochastic")
-                                show_adx = st.checkbox("ADX (Average Directional Index)", 
-                                                      value=st.session_state['show_adx'],
-                                                      key="adx")
-                                show_cci = st.checkbox("CCI (Commodity Channel Index)", 
-                                                      value=st.session_state['show_cci'],
-                                                      key="cci")
+                            st.session_state['show_bollinger'] = st.checkbox(
+                                "Bollinger Bands", 
+                                value=False if 'show_bollinger' not in st.session_state else st.session_state['show_bollinger'],
+                                key="show_bollinger"
+                            )
                             
-                            # Submit button for the form
-                            submitted = st.form_submit_button("Update Indicators")
+                            st.session_state['show_ma200'] = st.checkbox(
+                                "200-day Moving Average", 
+                                value=False if 'show_ma200' not in st.session_state else st.session_state['show_ma200'],
+                                key="show_ma200"
+                            )
+                        
+                        with col2:
+                            st.session_state['show_stochastic'] = st.checkbox(
+                                "Stochastic Oscillator", 
+                                value=False if 'show_stochastic' not in st.session_state else st.session_state['show_stochastic'],
+                                key="show_stochastic"
+                            )
                             
-                            if submitted:
-                                # Save selections to session state
-                                st.session_state['show_rsi'] = show_rsi
-                                st.session_state['show_macd'] = show_macd
-                                st.session_state['show_bollinger'] = show_bollinger
-                                st.session_state['show_ma200'] = show_ma200
-                                st.session_state['show_stochastic'] = show_stochastic
-                                st.session_state['show_adx'] = show_adx
-                                st.session_state['show_cci'] = show_cci
+                            st.session_state['show_adx'] = st.checkbox(
+                                "ADX (Average Directional Index)", 
+                                value=False if 'show_adx' not in st.session_state else st.session_state['show_adx'],
+                                key="show_adx"
+                            )
+                            
+                            st.session_state['show_cci'] = st.checkbox(
+                                "CCI (Commodity Channel Index)", 
+                                value=False if 'show_cci' not in st.session_state else st.session_state['show_cci'],
+                                key="show_cci"
+                            )
                             
                         # Create a list of selected indicators based on session state values
                         selected_indicators = []
