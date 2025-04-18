@@ -1983,39 +1983,47 @@ if submit_button:
                     sma_options = [5, 10, 20, 50, 100, 200]
                     selected_smas = st.multiselect("Add Simple Moving Averages (SMA)", sma_options, default=[20, 50, 200])
                     
+                    # Show all Moving Averages even if not selected
+                    # Calculate all possible SMAs first
+                    hist_data_sma = hist_data.copy()
+                    colors = {
+                        5: '#FF9800',    # Orange
+                        10: '#9C27B0',   # Purple
+                        20: '#17BECF',   # Light blue (cyan)
+                        50: '#B6267E',   # Pink/magenta
+                        100: '#2196F3',  # Blue
+                        200: '#2E55A5'   # Dark blue
+                    }
+                    
+                    # Create a dataframe with all SMAs
+                    for period in sma_options:
+                        hist_data_sma[f'SMA_{period}'] = hist_data_sma['Close'].rolling(window=period).mean()
+                    
                     if selected_smas:
-                        # Calculate selected SMAs
+                        st.write(f"Displaying SMAs for periods: {selected_smas}")
+                        
+                        # Always create a new figure when re-rendering
                         fig_sma = go.Figure()
                         
                         # Add candlestick chart
                         fig_sma.add_trace(go.Candlestick(
-                            x=hist_data.index,
-                            open=hist_data['Open'],
-                            high=hist_data['High'],
-                            low=hist_data['Low'],
-                            close=hist_data['Close'],
+                            x=hist_data_sma.index,
+                            open=hist_data_sma['Open'],
+                            high=hist_data_sma['High'],
+                            low=hist_data_sma['Low'],
+                            close=hist_data_sma['Close'],
                             name='Price'
                         ))
                         
-                        # Add SMAs with consistent colors
-                        colors = {
-                            5: '#FF9800',    # Orange
-                            10: '#9C27B0',   # Purple
-                            20: '#17BECF',   # Light blue (cyan)
-                            50: '#B6267E',   # Pink/magenta
-                            100: '#2196F3',  # Blue
-                            200: '#2E55A5'   # Dark blue
-                        }
-                        
+                        # Add only the selected SMAs
                         for period in selected_smas:
-                            sma = hist_data['Close'].rolling(window=period).mean()
                             line_width = 2.0 if period == 200 else 1.5
                             
                             fig_sma.add_trace(go.Scatter(
-                                x=hist_data.index,
-                                y=sma,
+                                x=hist_data_sma.index,
+                                y=hist_data_sma[f'SMA_{period}'],
                                 name=f'SMA {period}',
-                                line=dict(width=line_width, color=colors.get(period, None))
+                                line=dict(width=line_width, color=colors.get(period, '#FF0000'))
                             ))
                         
                         # Update layout
@@ -2035,6 +2043,16 @@ if submit_button:
                         )
                         
                         st.plotly_chart(fig_sma, use_container_width=True)
+                        
+                        # Also show the same data with Streamlit's native chart
+                        st.write("### Moving Averages (Streamlit Native Chart)")
+                        
+                        # Prepare data for line chart
+                        line_data = pd.DataFrame({'Close': hist_data_sma['Close']})
+                        for period in selected_smas:
+                            line_data[f'SMA {period}'] = hist_data_sma[f'SMA_{period}']
+                            
+                        st.line_chart(line_data)
                 
                 with tab2:
                     st.subheader("Technical Indicators - Simplified")
