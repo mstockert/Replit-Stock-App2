@@ -2002,24 +2002,38 @@ if submit_button:
                     # Simple moving average
                     st.subheader("Moving Averages")
                     
-                    # Use a completely different approach with multiselect which is more reliable
                     st.write("""
                     ### Moving Average Periods
                     Select which Moving Averages to show in the chart below.
                     (Multiple MAs provide better insight into trend direction)
                     """)
                     
-                    # Define available MA periods
-                    all_ma_periods = ['5-Day', '10-Day', '20-Day', '50-Day', '100-Day', '200-Day']
+                    # Use separate checkboxes for each MA period - more reliable than multiselect
+                    st.write("Select Moving Averages:")
                     
-                    # Use the more reliable multiselect component instead of buttons
-                    # Default to showing some key MAs
-                    default_selections = ['20-Day', '50-Day', '200-Day']
-                    selected_ma_periods = st.multiselect(
-                        "Choose Moving Averages to display:",
-                        options=all_ma_periods,
-                        default=default_selections
-                    )
+                    # Create two columns for better layout
+                    col1, col2 = st.columns(2)
+                    
+                    # Create individual checkboxes in the first column
+                    with col1:
+                        show_ma5 = st.checkbox("5-Day MA", value=False, key="ma5")
+                        show_ma20 = st.checkbox("20-Day MA", value=True, key="ma20")
+                        show_ma100 = st.checkbox("100-Day MA", value=False, key="ma100")
+                    
+                    # Create individual checkboxes in the second column
+                    with col2:
+                        show_ma10 = st.checkbox("10-Day MA", value=False, key="ma10")
+                        show_ma50 = st.checkbox("50-Day MA", value=True, key="ma50")
+                        show_ma200 = st.checkbox("200-Day MA", value=True, key="ma200")
+                    
+                    # Build the list of selected periods based on checkbox states
+                    selected_ma_periods = []
+                    if show_ma5: selected_ma_periods.append('5-Day')
+                    if show_ma10: selected_ma_periods.append('10-Day')
+                    if show_ma20: selected_ma_periods.append('20-Day')
+                    if show_ma50: selected_ma_periods.append('50-Day')
+                    if show_ma100: selected_ma_periods.append('100-Day')
+                    if show_ma200: selected_ma_periods.append('200-Day')
                     
                     # Calculate all MAs at once
                     hist_data_ma = hist_data.copy()
@@ -2106,46 +2120,29 @@ if submit_button:
                 with tab2:
                     st.subheader("Technical Indicators")
                     
-                    # Use multiselect for more reliable Technical Indicator selection
-                    st.subheader("Technical Indicators")
+                    # Technical Indicators
+                    st.subheader("Select Technical Indicators")
                     
-                    # Define all available indicators
-                    all_indicators = [
-                        'RSI (Relative Strength Index)',
-                        'MACD (Moving Average Convergence Divergence)',
-                        'Bollinger Bands',
-                        'Stochastic Oscillator',
-                        'ADX (Average Directional Index)',
-                        'CCI (Commodity Channel Index)'
-                    ]
+                    # Use individual checkboxes for each indicator, which has better reliability
+                    # Create a 2x3 grid of checkboxes for better organization
+                    col1, col2 = st.columns(2)
                     
-                    # Map friendly names to internal names
-                    indicator_mapping = {
-                        'RSI (Relative Strength Index)': 'RSI',
-                        'MACD (Moving Average Convergence Divergence)': 'MACD',
-                        'Bollinger Bands': 'Bollinger',
-                        'Stochastic Oscillator': 'Stochastic',
-                        'ADX (Average Directional Index)': 'ADX',
-                        'CCI (Commodity Channel Index)': 'CCI'
-                    }
+                    with col1:
+                        show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True, key="rsi")
+                        show_macd = st.checkbox("MACD", value=True, key="macd")
+                        show_bb = st.checkbox("Bollinger Bands", value=True, key="bb")
                     
-                    # Default selections
-                    default_indicators = ['RSI (Relative Strength Index)', 'MACD (Moving Average Convergence Divergence)', 'Bollinger Bands']
-                    
-                    # Use multiselect for indicator selection
-                    selected_indicators = st.multiselect(
-                        "Select Technical Indicators to Display:",
-                        options=all_indicators,
-                        default=default_indicators,
-                        help="Choose which technical indicators to display below"
-                    )
+                    with col2:
+                        show_stoch = st.checkbox("Stochastic Oscillator", value=False, key="stoch")
+                        show_adx = st.checkbox("ADX (Average Directional Index)", value=False, key="adx")
+                        show_cci = st.checkbox("CCI (Commodity Channel Index)", value=False, key="cci")
                     
                     # Calculate all indicators upfront (more efficient)
                     indicators_data = calculate_technical_indicators(hist_data)
                     
-                    # For each indicator, check if it's in the selected list and display accordingly
+                    # Display indicators based on checkbox selections
                     # RSI Indicator
-                    if 'RSI (Relative Strength Index)' in selected_indicators:
+                    if show_rsi:
                         st.markdown("### Relative Strength Index (RSI)")
                         st.markdown("""
                         RSI measures the magnitude of recent price changes to evaluate overbought or oversold conditions.
@@ -2193,7 +2190,7 @@ if submit_button:
                         st.plotly_chart(rsi_fig, use_container_width=True)
                     
                     # MACD Indicator
-                    if 'MACD (Moving Average Convergence Divergence)' in selected_indicators:
+                    if show_macd:
                         st.markdown("### Moving Average Convergence Divergence (MACD)")
                         st.markdown("""
                         MACD is a trend-following momentum indicator that shows the relationship between two moving averages.
@@ -2264,7 +2261,7 @@ if submit_button:
                         st.plotly_chart(macd_fig, use_container_width=True)
                     
                     # Bollinger Bands
-                    if 'Bollinger Bands' in selected_indicators:
+                    if show_bb:
                         st.markdown("### Bollinger Bands")
                         st.markdown("""
                         Bollinger Bands consist of a middle band (SMA) with two outer bands (standard deviations).
@@ -2357,7 +2354,7 @@ if submit_button:
                         st.plotly_chart(bb_fig, use_container_width=True)
                     
                     # Stochastic oscillator
-                    if 'Stochastic Oscillator' in selected_indicators:
+                    if show_stoch:
                         st.markdown("### Stochastic Oscillator")
                         st.markdown("""
                         The Stochastic Oscillator compares a stock's closing price to its price range over a period.
@@ -2430,7 +2427,7 @@ if submit_button:
                         st.plotly_chart(stoch_fig, use_container_width=True)
                     
                     # ADX (Average Directional Index)
-                    if 'ADX (Average Directional Index)' in selected_indicators:
+                    if show_adx:
                         st.markdown("### Average Directional Index (ADX)")
                         st.markdown("""
                         ADX is used to determine the strength of a trend, regardless of its direction.
@@ -2484,7 +2481,7 @@ if submit_button:
                         st.plotly_chart(adx_fig, use_container_width=True)
                     
                     # CCI (Commodity Channel Index)
-                    if 'CCI (Commodity Channel Index)' in selected_indicators:
+                    if show_cci:
                         st.markdown("### Commodity Channel Index (CCI)")
                         st.markdown("""
                         CCI measures the current price level relative to an average price level over a given period.
