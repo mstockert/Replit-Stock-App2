@@ -737,6 +737,9 @@ def calculate_technical_indicators(data):
     # Commodity Channel Index (CCI)
     df['CCI'] = ta.trend.CCIIndicator(df['High'], df['Low'], df['Close']).cci()
     
+    # 200-day Moving Average
+    df['MA200'] = df['Close'].rolling(window=200).mean()
+    
     return df
 
 def create_price_chart(data, company_name, time_period):
@@ -1191,6 +1194,107 @@ def create_cci_chart(data):
             xanchor="right",
             x=1
         )
+    )
+    
+    return fig
+
+def create_ma200_chart(data):
+    """Create a 200-day Moving Average chart"""
+    fig = go.Figure()
+    
+    # Add price chart (use candlestick)
+    fig.add_trace(go.Candlestick(
+        x=data.index,
+        open=data['Open'],
+        high=data['High'],
+        low=data['Low'],
+        close=data['Close'],
+        name='Price',
+        increasing_line_color='green',
+        decreasing_line_color='red'
+    ))
+    
+    # Add 200-day MA line
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['MA200'],
+        mode='lines',
+        name='200-day MA',
+        line=dict(color='blue', width=2.5)
+    ))
+    
+    # Calculate and highlight crossover points
+    crossover_points = []
+    for i in range(1, len(data)):
+        # Skip NaN values (first 200 days will have NaN for MA200)
+        if pd.isna(data['MA200'].iloc[i-1]) or pd.isna(data['MA200'].iloc[i]):
+            continue
+            
+        # Check if price crossed above MA200
+        if data['Close'].iloc[i-1] < data['MA200'].iloc[i-1] and data['Close'].iloc[i] > data['MA200'].iloc[i]:
+            crossover_points.append({
+                'date': data.index[i],
+                'price': data['Close'].iloc[i],
+                'type': 'bullish'
+            })
+        # Check if price crossed below MA200
+        elif data['Close'].iloc[i-1] > data['MA200'].iloc[i-1] and data['Close'].iloc[i] < data['MA200'].iloc[i]:
+            crossover_points.append({
+                'date': data.index[i],
+                'price': data['Close'].iloc[i],
+                'type': 'bearish'
+            })
+    
+    # Add bullish crossover points (price crosses above MA200)
+    bullish_dates = [p['date'] for p in crossover_points if p['type'] == 'bullish']
+    bullish_prices = [p['price'] for p in crossover_points if p['type'] == 'bullish']
+    
+    if bullish_dates:  # Only add if there are bullish crossovers
+        fig.add_trace(go.Scatter(
+            x=bullish_dates,
+            y=bullish_prices,
+            mode='markers',
+            name='Bullish Crossover',
+            marker=dict(
+                symbol='triangle-up',
+                size=12,
+                color='green',
+                line=dict(width=1, color='darkgreen')
+            )
+        ))
+    
+    # Add bearish crossover points (price crosses below MA200)
+    bearish_dates = [p['date'] for p in crossover_points if p['type'] == 'bearish']
+    bearish_prices = [p['price'] for p in crossover_points if p['type'] == 'bearish']
+    
+    if bearish_dates:  # Only add if there are bearish crossovers
+        fig.add_trace(go.Scatter(
+            x=bearish_dates,
+            y=bearish_prices,
+            mode='markers',
+            name='Bearish Crossover',
+            marker=dict(
+                symbol='triangle-down',
+                size=12,
+                color='red',
+                line=dict(width=1, color='darkred')
+            )
+        ))
+    
+    # Update layout
+    fig.update_layout(
+        title="200-day Moving Average with Crossovers",
+        xaxis_title="Date",
+        yaxis_title="Price",
+        height=500,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=0, r=0, t=30, b=0)
     )
     
     return fig
@@ -1814,6 +1918,7 @@ if submit_button:
                             show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True)
                             show_macd = st.checkbox("MACD", value=True)
                             show_bollinger = st.checkbox("Bollinger Bands", value=False)
+                            show_ma200 = st.checkbox("200-day Moving Average", value=False)
                             
                         with col2:
                             show_stochastic = st.checkbox("Stochastic Oscillator", value=False)
@@ -1828,6 +1933,7 @@ if submit_button:
                         if show_stochastic: selected_indicators.append("Stochastic Oscillator")
                         if show_adx: selected_indicators.append("ADX")
                         if show_cci: selected_indicators.append("CCI")
+                        if show_ma200: selected_indicators.append("MA200")
                         
                         if "RSI" in selected_indicators:
                             st.markdown("### Relative Strength Index (RSI)")
@@ -1895,6 +2001,17 @@ if submit_button:
                             """)
                             fig_cci = create_cci_chart(indicators_data)
                             st.plotly_chart(fig_cci, use_container_width=True)
+                            
+                        if "MA200" in selected_indicators:
+                            st.markdown("### 200-day Moving Average")
+                            st.markdown("""
+                            The 200-day Moving Average is a key long-term trend indicator.
+                            - Price above the 200-day MA generally indicates a long-term uptrend
+                            - Price below the 200-day MA generally indicates a long-term downtrend
+                            - Crossovers of price and the 200-day MA can signal major trend changes
+                            """)
+                            fig_ma200 = create_ma200_chart(indicators_data)
+                            st.plotly_chart(fig_ma200, use_container_width=True)
                 
                 with tab3:
                     st.subheader("Key Financial Metrics")
