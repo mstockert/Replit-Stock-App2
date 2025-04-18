@@ -1344,7 +1344,7 @@ def create_ma200_chart(data):
         
         # Update layout
         fig.update_layout(
-            title="200-day Moving Average with Crossovers",
+            title="Multiple Moving Averages (20, 50, and 200-day)",
             xaxis_title="Date",
             yaxis_title="Price",
             height=500,
@@ -1364,14 +1364,14 @@ def create_ma200_chart(data):
         # Create a simple error figure
         fig = go.Figure()
         fig.add_annotation(
-            text=f"Error creating 200-day MA chart: {str(e)}",
+            text=f"Error creating Moving Averages chart: {str(e)}",
             xref="paper", yref="paper",
             x=0.5, y=0.5,
             showarrow=False,
             font=dict(size=14, color="red")
         )
         fig.update_layout(
-            title="200-day Moving Average (Error)",
+            title="Moving Averages (Error)",
             height=500
         )
         return fig
@@ -2087,12 +2087,15 @@ if submit_button:
                             st.plotly_chart(fig_cci, use_container_width=True)
                             
                         if "MA200" in selected_indicators:
-                            st.markdown("### 200-day Moving Average")
+                            st.markdown("### Moving Averages (20, 50, and 200-day)")
                             st.markdown("""
-                            The 200-day Moving Average is a key long-term trend indicator.
-                            - Price above the 200-day MA generally indicates a long-term uptrend
-                            - Price below the 200-day MA generally indicates a long-term downtrend
-                            - Crossovers of price and the 200-day MA can signal major trend changes
+                            Moving Averages help identify trends at different time frames:
+                            - 20-day MA (orange): Short-term trend indicator
+                            - 50-day MA (purple): Medium-term trend indicator
+                            - 200-day MA (blue): Long-term trend indicator
+                            
+                            When shorter MAs cross above longer MAs, it may signal bullish momentum.
+                            When shorter MAs cross below longer MAs, it may signal bearish momentum.
                             """)
                             fig_ma200 = create_ma200_chart(indicators_data)
                             st.plotly_chart(fig_ma200, use_container_width=True)
