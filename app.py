@@ -1199,105 +1199,152 @@ def create_cci_chart(data):
     return fig
 
 def create_ma200_chart(data):
-    """Create a 200-day Moving Average chart"""
-    fig = go.Figure()
-    
-    # Add price chart (use candlestick)
-    fig.add_trace(go.Candlestick(
-        x=data.index,
-        open=data['Open'],
-        high=data['High'],
-        low=data['Low'],
-        close=data['Close'],
-        name='Price',
-        increasing_line_color='green',
-        decreasing_line_color='red'
-    ))
-    
-    # Add 200-day MA line
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['MA200'],
-        mode='lines',
-        name='200-day MA',
-        line=dict(color='blue', width=2.5)
-    ))
-    
-    # Calculate and highlight crossover points
-    crossover_points = []
-    for i in range(1, len(data)):
-        # Skip NaN values (first 200 days will have NaN for MA200)
-        if pd.isna(data['MA200'].iloc[i-1]) or pd.isna(data['MA200'].iloc[i]):
-            continue
+    """Create a 200-day Moving Average chart with enhanced error handling"""
+    try:
+        # Make a copy to avoid modifying the original
+        df = data.copy()
+        
+        # Check if required columns exist
+        required_cols = ['Open', 'High', 'Low', 'Close', 'MA200']
+        for col in required_cols:
+            if col not in df.columns:
+                if col == 'MA200':
+                    # If MA200 is missing, calculate it
+                    df['MA200'] = df['Close'].rolling(window=200).mean()
+                else:
+                    # For other required columns, raise an error
+                    raise ValueError(f"Required column '{col}' not found in data")
+        
+        # Create the plot
+        fig = go.Figure()
+        
+        # Add price chart (use candlestick)
+        fig.add_trace(go.Candlestick(
+            x=df.index,
+            open=df['Open'],
+            high=df['High'],
+            low=df['Low'],
+            close=df['Close'],
+            name='Price',
+            increasing_line_color='green',
+            decreasing_line_color='red'
+        ))
+        
+        # Add 200-day MA line, filtering out NaN values
+        ma200_data = df[['MA200']].dropna()
+        if not ma200_data.empty:
+            fig.add_trace(go.Scatter(
+                x=ma200_data.index,
+                y=ma200_data['MA200'],
+                mode='lines',
+                name='200-day MA',
+                line=dict(color='blue', width=2.5)
+            ))
+        
+            # Calculate and highlight crossover points
+            crossover_points = []
+            for i in range(1, len(df)):
+                # Skip indices that don't have MA200 data
+                if i-1 >= len(ma200_data) or i >= len(ma200_data):
+                    continue
+                
+                # Skip NaN values
+                if pd.isna(df['MA200'].iloc[i-1]) or pd.isna(df['MA200'].iloc[i]):
+                    continue
+                    
+                # Check if price crossed above MA200
+                if df['Close'].iloc[i-1] < df['MA200'].iloc[i-1] and df['Close'].iloc[i] > df['MA200'].iloc[i]:
+                    crossover_points.append({
+                        'date': df.index[i],
+                        'price': df['Close'].iloc[i],
+                        'type': 'bullish'
+                    })
+                # Check if price crossed below MA200
+                elif df['Close'].iloc[i-1] > df['MA200'].iloc[i-1] and df['Close'].iloc[i] < df['MA200'].iloc[i]:
+                    crossover_points.append({
+                        'date': df.index[i],
+                        'price': df['Close'].iloc[i],
+                        'type': 'bearish'
+                    })
             
-        # Check if price crossed above MA200
-        if data['Close'].iloc[i-1] < data['MA200'].iloc[i-1] and data['Close'].iloc[i] > data['MA200'].iloc[i]:
-            crossover_points.append({
-                'date': data.index[i],
-                'price': data['Close'].iloc[i],
-                'type': 'bullish'
-            })
-        # Check if price crossed below MA200
-        elif data['Close'].iloc[i-1] > data['MA200'].iloc[i-1] and data['Close'].iloc[i] < data['MA200'].iloc[i]:
-            crossover_points.append({
-                'date': data.index[i],
-                'price': data['Close'].iloc[i],
-                'type': 'bearish'
-            })
-    
-    # Add bullish crossover points (price crosses above MA200)
-    bullish_dates = [p['date'] for p in crossover_points if p['type'] == 'bullish']
-    bullish_prices = [p['price'] for p in crossover_points if p['type'] == 'bullish']
-    
-    if bullish_dates:  # Only add if there are bullish crossovers
-        fig.add_trace(go.Scatter(
-            x=bullish_dates,
-            y=bullish_prices,
-            mode='markers',
-            name='Bullish Crossover',
-            marker=dict(
-                symbol='triangle-up',
-                size=12,
-                color='green',
-                line=dict(width=1, color='darkgreen')
+            # Add bullish crossover points (price crosses above MA200)
+            bullish_dates = [p['date'] for p in crossover_points if p['type'] == 'bullish']
+            bullish_prices = [p['price'] for p in crossover_points if p['type'] == 'bullish']
+            
+            if bullish_dates:  # Only add if there are bullish crossovers
+                fig.add_trace(go.Scatter(
+                    x=bullish_dates,
+                    y=bullish_prices,
+                    mode='markers',
+                    name='Bullish Crossover',
+                    marker=dict(
+                        symbol='triangle-up',
+                        size=12,
+                        color='green',
+                        line=dict(width=1, color='darkgreen')
+                    )
+                ))
+            
+            # Add bearish crossover points (price crosses below MA200)
+            bearish_dates = [p['date'] for p in crossover_points if p['type'] == 'bearish']
+            bearish_prices = [p['price'] for p in crossover_points if p['type'] == 'bearish']
+            
+            if bearish_dates:  # Only add if there are bearish crossovers
+                fig.add_trace(go.Scatter(
+                    x=bearish_dates,
+                    y=bearish_prices,
+                    mode='markers',
+                    name='Bearish Crossover',
+                    marker=dict(
+                        symbol='triangle-down',
+                        size=12,
+                        color='red',
+                        line=dict(width=1, color='darkred')
+                    )
+                ))
+        else:
+            # Add a note if no MA200 data is available
+            fig.add_annotation(
+                text="Not enough data for 200-day MA (requires at least 200 days of data)",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5,
+                showarrow=False,
+                font=dict(size=14)
             )
-        ))
+        
+        # Update layout
+        fig.update_layout(
+            title="200-day Moving Average with Crossovers",
+            xaxis_title="Date",
+            yaxis_title="Price",
+            height=500,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            margin=dict(l=0, r=0, t=30, b=0)
+        )
+        
+        return fig
     
-    # Add bearish crossover points (price crosses below MA200)
-    bearish_dates = [p['date'] for p in crossover_points if p['type'] == 'bearish']
-    bearish_prices = [p['price'] for p in crossover_points if p['type'] == 'bearish']
-    
-    if bearish_dates:  # Only add if there are bearish crossovers
-        fig.add_trace(go.Scatter(
-            x=bearish_dates,
-            y=bearish_prices,
-            mode='markers',
-            name='Bearish Crossover',
-            marker=dict(
-                symbol='triangle-down',
-                size=12,
-                color='red',
-                line=dict(width=1, color='darkred')
-            )
-        ))
-    
-    # Update layout
-    fig.update_layout(
-        title="200-day Moving Average with Crossovers",
-        xaxis_title="Date",
-        yaxis_title="Price",
-        height=500,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
-        margin=dict(l=0, r=0, t=30, b=0)
-    )
-    
-    return fig
+    except Exception as e:
+        # Create a simple error figure
+        fig = go.Figure()
+        fig.add_annotation(
+            text=f"Error creating 200-day MA chart: {str(e)}",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=14, color="red")
+        )
+        fig.update_layout(
+            title="200-day Moving Average (Error)",
+            height=500
+        )
+        return fig
 
 def create_comparison_chart(stock_data_dict, time_period, normalize=False):
     """Create a chart comparing multiple stocks over time with timezone handling"""
