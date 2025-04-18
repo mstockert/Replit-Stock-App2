@@ -10,5 +10,6 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "sqlalchemy>=2.0.40",
     "streamlit>=1.44.1",
+    "trafilatura>=2.0.0",
     "yfinance>=0.2.55",
 ]
