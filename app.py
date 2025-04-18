@@ -7,46 +7,20 @@ import numpy as np
 import os
 import time
 
-# Import yfinance with patch to prevent multiple tickers in one request
+# Import yfinance
 import yfinance as yf
-from yfinance.tickers import Tickers
 
-# Patch the _get_quotes method to use individual requests instead of batch
-def _patched_get_quotes(self):
-    """This is a patched version of the _get_quotes method in yfinance.
-    The original tries to get all symbols at once, which fails with 404."""
-    if not self.symbols:
-        return {}
-    
-    quotes = {}
-    for symbol in self.symbols:
-        try:
-            time.sleep(0.5)  # Add delay between requests
-            ticker_obj = yf.Ticker(symbol)
-            quotes[symbol] = ticker_obj.info
-        except Exception as e:
-            st.warning(f"Error fetching info for {symbol}: {e}")
-            quotes[symbol] = {}
-    
-    return quotes
-
-# Apply the monkey patch to Tickers class
-yf.Tickers._get_quotes = _patched_get_quotes
-
-# Also patch the Ticker fast_info to prevent similar issues
-# This is needed because .info might still try to batch requests internally
-original_get_fast_info = yf.Ticker.fast_info.__get__
-
-def patched_fast_info(self):
-    """Patched version of fast_info to handle errors gracefully"""
+# Add more robust error handling to yfinance operations
+def safe_get_ticker_info(ticker_symbol):
+    """
+    Safely get ticker info with proper error handling.
+    """
     try:
-        return original_get_fast_info(self)
+        ticker = yf.Ticker(ticker_symbol)
+        return ticker
     except Exception as e:
-        st.warning(f"Error getting fast_info: {e}")
+        st.error(f"Error creating ticker object for {ticker_symbol}: {e}")
         return None
-
-# Apply the patch to Ticker.fast_info
-yf.Ticker.fast_info = property(patched_fast_info)
 
 # Import database modules
 import database as db
