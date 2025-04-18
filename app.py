@@ -1806,9 +1806,28 @@ if submit_button:
                         # Calculate all technical indicators
                         indicators_data = calculate_technical_indicators(hist_data)
                         
-                        # Create indicator selection
-                        indicator_options = ["RSI", "MACD", "Bollinger Bands", "Stochastic Oscillator", "ADX", "CCI"]
-                        selected_indicators = st.multiselect("Select Technical Indicators", indicator_options, default=["RSI", "MACD"])
+                        # Create indicator selection with checkboxes instead of multiselect
+                        st.subheader("Select Technical Indicators")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True)
+                            show_macd = st.checkbox("MACD", value=True)
+                            show_bollinger = st.checkbox("Bollinger Bands", value=False)
+                            
+                        with col2:
+                            show_stochastic = st.checkbox("Stochastic Oscillator", value=False)
+                            show_adx = st.checkbox("ADX (Average Directional Index)", value=False)
+                            show_cci = st.checkbox("CCI (Commodity Channel Index)", value=False)
+                            
+                        # Create a list of selected indicators based on checkboxes
+                        selected_indicators = []
+                        if show_rsi: selected_indicators.append("RSI")
+                        if show_macd: selected_indicators.append("MACD")
+                        if show_bollinger: selected_indicators.append("Bollinger Bands")
+                        if show_stochastic: selected_indicators.append("Stochastic Oscillator")
+                        if show_adx: selected_indicators.append("ADX")
+                        if show_cci: selected_indicators.append("CCI")
                         
                         if "RSI" in selected_indicators:
                             st.markdown("### Relative Strength Index (RSI)")
