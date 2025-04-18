@@ -737,7 +737,9 @@ def calculate_technical_indicators(data):
     # Commodity Channel Index (CCI)
     df['CCI'] = ta.trend.CCIIndicator(df['High'], df['Low'], df['Close']).cci()
     
-    # 200-day Moving Average
+    # Moving Averages - 20, 50, and 200 day
+    df['MA20'] = df['Close'].rolling(window=20).mean()
+    df['MA50'] = df['Close'].rolling(window=50).mean()
     df['MA200'] = df['Close'].rolling(window=200).mean()
     
     return df
@@ -1199,16 +1201,22 @@ def create_cci_chart(data):
     return fig
 
 def create_ma200_chart(data):
-    """Create a 200-day Moving Average chart with enhanced error handling"""
+    """Create a chart with multiple Moving Averages (20, 50, and 200-day)"""
     try:
         # Make a copy to avoid modifying the original
         df = data.copy()
         
         # Check if required columns exist
-        required_cols = ['Open', 'High', 'Low', 'Close', 'MA200']
+        required_cols = ['Open', 'High', 'Low', 'Close', 'MA20', 'MA50', 'MA200']
         for col in required_cols:
             if col not in df.columns:
-                if col == 'MA200':
+                if col == 'MA20':
+                    # If MA20 is missing, calculate it
+                    df['MA20'] = df['Close'].rolling(window=20).mean()
+                elif col == 'MA50':
+                    # If MA50 is missing, calculate it
+                    df['MA50'] = df['Close'].rolling(window=50).mean()
+                elif col == 'MA200':
                     # If MA200 is missing, calculate it
                     df['MA200'] = df['Close'].rolling(window=200).mean()
                 else:
@@ -1229,6 +1237,28 @@ def create_ma200_chart(data):
             increasing_line_color='green',
             decreasing_line_color='red'
         ))
+        
+        # Add 20-day MA line, filtering out NaN values
+        ma20_data = df[['MA20']].dropna()
+        if not ma20_data.empty:
+            fig.add_trace(go.Scatter(
+                x=ma20_data.index,
+                y=ma20_data['MA20'],
+                mode='lines',
+                name='20-day MA',
+                line=dict(color='orange', width=1.5)
+            ))
+            
+        # Add 50-day MA line, filtering out NaN values
+        ma50_data = df[['MA50']].dropna()
+        if not ma50_data.empty:
+            fig.add_trace(go.Scatter(
+                x=ma50_data.index,
+                y=ma50_data['MA50'],
+                mode='lines',
+                name='50-day MA',
+                line=dict(color='purple', width=1.5)
+            ))
         
         # Add 200-day MA line, filtering out NaN values
         ma200_data = df[['MA200']].dropna()
@@ -1957,66 +1987,33 @@ if submit_button:
                         # Calculate all technical indicators
                         indicators_data = calculate_technical_indicators(hist_data)
                         
-                        # Create indicator selection with simpler approach - direct checkboxes
+                        # Create indicator selection with simple checkboxes
                         st.subheader("Select Technical Indicators")
                         
                         # Create columns for better layout
                         col1, col2 = st.columns(2)
                         
-                        # Direct checkboxes with simple keys that update session state directly
+                        # Create simple checkboxes - Streamlit will handle the state
                         with col1:
-                            st.session_state['show_rsi'] = st.checkbox(
-                                "RSI (Relative Strength Index)", 
-                                value=True if 'show_rsi' not in st.session_state else st.session_state['show_rsi'],
-                                key="show_rsi"
-                            )
-                            
-                            st.session_state['show_macd'] = st.checkbox(
-                                "MACD", 
-                                value=True if 'show_macd' not in st.session_state else st.session_state['show_macd'],
-                                key="show_macd"
-                            )
-                            
-                            st.session_state['show_bollinger'] = st.checkbox(
-                                "Bollinger Bands", 
-                                value=False if 'show_bollinger' not in st.session_state else st.session_state['show_bollinger'],
-                                key="show_bollinger"
-                            )
-                            
-                            st.session_state['show_ma200'] = st.checkbox(
-                                "200-day Moving Average", 
-                                value=False if 'show_ma200' not in st.session_state else st.session_state['show_ma200'],
-                                key="show_ma200"
-                            )
+                            show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True)
+                            show_macd = st.checkbox("MACD", value=True)
+                            show_bollinger = st.checkbox("Bollinger Bands")
+                            show_ma200 = st.checkbox("200-day Moving Average")
                         
                         with col2:
-                            st.session_state['show_stochastic'] = st.checkbox(
-                                "Stochastic Oscillator", 
-                                value=False if 'show_stochastic' not in st.session_state else st.session_state['show_stochastic'],
-                                key="show_stochastic"
-                            )
+                            show_stochastic = st.checkbox("Stochastic Oscillator")
+                            show_adx = st.checkbox("ADX (Average Directional Index)")
+                            show_cci = st.checkbox("CCI (Commodity Channel Index)")
                             
-                            st.session_state['show_adx'] = st.checkbox(
-                                "ADX (Average Directional Index)", 
-                                value=False if 'show_adx' not in st.session_state else st.session_state['show_adx'],
-                                key="show_adx"
-                            )
-                            
-                            st.session_state['show_cci'] = st.checkbox(
-                                "CCI (Commodity Channel Index)", 
-                                value=False if 'show_cci' not in st.session_state else st.session_state['show_cci'],
-                                key="show_cci"
-                            )
-                            
-                        # Create a list of selected indicators based on session state values
+                        # Create a list of selected indicators based on checkbox values
                         selected_indicators = []
-                        if st.session_state['show_rsi']: selected_indicators.append("RSI")
-                        if st.session_state['show_macd']: selected_indicators.append("MACD")
-                        if st.session_state['show_bollinger']: selected_indicators.append("Bollinger Bands")
-                        if st.session_state['show_stochastic']: selected_indicators.append("Stochastic Oscillator")
-                        if st.session_state['show_adx']: selected_indicators.append("ADX")
-                        if st.session_state['show_cci']: selected_indicators.append("CCI")
-                        if st.session_state['show_ma200']: selected_indicators.append("MA200")
+                        if show_rsi: selected_indicators.append("RSI")
+                        if show_macd: selected_indicators.append("MACD")
+                        if show_bollinger: selected_indicators.append("Bollinger Bands")
+                        if show_stochastic: selected_indicators.append("Stochastic Oscillator")
+                        if show_adx: selected_indicators.append("ADX")
+                        if show_cci: selected_indicators.append("CCI")
+                        if show_ma200: selected_indicators.append("MA200")
                         
                         # Add a status message about selected indicators
                         if selected_indicators:
