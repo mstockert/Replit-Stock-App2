@@ -2105,92 +2105,100 @@ if submit_button:
                             - Bands narrowing can signal potential volatility increase
                             """)
                             
-                            # Create Bollinger Bands chart directly here (bypassing the function)
+                            # Add diagnostic information about the selected stock data
+                            st.info(f"Stock Data Shape: {hist_data.shape}, Data Range: {hist_data.index[0]} to {hist_data.index[-1]}")
+                            
+                            # Display basic chart with just price data
+                            price_fig = go.Figure()
+                            price_fig.add_trace(go.Scatter(
+                                x=hist_data.index,
+                                y=hist_data['Close'],
+                                mode='lines',
+                                name='Close Price',
+                                line=dict(color='blue', width=1.5)
+                            ))
+                            price_fig.update_layout(
+                                title='Stock Price (Basic Chart)',
+                                xaxis_title='Date',
+                                yaxis_title='Price',
+                                height=300
+                            )
+                            st.plotly_chart(price_fig, use_container_width=True)
+                            
+                            # Now create Bollinger Bands
+                            st.subheader("Bollinger Bands Calculation")
+                            
                             try:
-                                # Create a direct implementation
-                                df = hist_data.copy()
-                                
-                                # Calculate Bollinger Bands directly
+                                # Use a simpler approach with explicit diagnostics
                                 window = 20
-                                df['BB_Middle'] = df['Close'].rolling(window=window).mean()
-                                df['BB_Std'] = df['Close'].rolling(window=window).std()
-                                df['BB_Upper'] = df['BB_Middle'] + (df['BB_Std'] * 2)
-                                df['BB_Lower'] = df['BB_Middle'] - (df['BB_Std'] * 2)
+                                sma = hist_data['Close'].rolling(window=window).mean()
+                                std = hist_data['Close'].rolling(window=window).std()
+                                upper = sma + (std * 2)
+                                lower = sma - (std * 2)
                                 
-                                # Create the figure
+                                # Create a dataframe for display
+                                bb_data = pd.DataFrame({
+                                    'Close': hist_data['Close'],
+                                    'SMA20': sma,
+                                    'Upper Band': upper,
+                                    'Lower Band': lower
+                                })
+                                
+                                # Display the first few rows to verify calculations
+                                st.write("Sample of calculated values:")
+                                st.dataframe(bb_data.tail(5))
+                                
+                                # Create a standard line chart using Streamlit
+                                st.line_chart(bb_data)
+                                
+                                # Also try with Plotly
+                                st.subheader("Bollinger Bands with Plotly")
                                 bb_fig = go.Figure()
                                 
-                                # Add price line
+                                # Add the traces one by one
                                 bb_fig.add_trace(go.Scatter(
-                                    x=df.index,
-                                    y=df['Close'],
+                                    x=hist_data.index,
+                                    y=hist_data['Close'],
                                     mode='lines',
                                     name='Close Price',
                                     line=dict(color='blue', width=1.5)
                                 ))
                                 
-                                # Add upper band
                                 bb_fig.add_trace(go.Scatter(
-                                    x=df.index,
-                                    y=df['BB_Upper'],
+                                    x=hist_data.index,
+                                    y=upper,
                                     mode='lines',
                                     name='Upper Band',
                                     line=dict(color='red', width=1)
                                 ))
                                 
-                                # Add middle band (SMA 20)
                                 bb_fig.add_trace(go.Scatter(
-                                    x=df.index,
-                                    y=df['BB_Middle'],
+                                    x=hist_data.index,
+                                    y=sma,
                                     mode='lines',
-                                    name='Middle Band (SMA 20)',
+                                    name='SMA 20',
                                     line=dict(color='orange', width=1)
                                 ))
                                 
-                                # Add lower band
                                 bb_fig.add_trace(go.Scatter(
-                                    x=df.index,
-                                    y=df['BB_Lower'],
+                                    x=hist_data.index,
+                                    y=lower,
                                     mode='lines',
                                     name='Lower Band',
                                     line=dict(color='green', width=1)
                                 ))
                                 
-                                # Try to add fill between bands
-                                try:
-                                    bb_fig.add_trace(go.Scatter(
-                                        x=df.index.tolist() + df.index.tolist()[::-1],
-                                        y=df['BB_Upper'].tolist() + df['BB_Lower'].tolist()[::-1],
-                                        fill='toself',
-                                        fillcolor='rgba(0, 176, 246, 0.1)',
-                                        line=dict(color='rgba(255, 255, 255, 0)'),
-                                        name='Bollinger Band Range',
-                                        showlegend=True
-                                    ))
-                                except:
-                                    # Skip the fill if it causes issues
-                                    pass
-                                
-                                # Update layout
                                 bb_fig.update_layout(
-                                    title='Bollinger Bands',
-                                    xaxis_title='Date',
-                                    yaxis_title='Price',
-                                    height=400,
-                                    legend=dict(
-                                        orientation="h",
-                                        yanchor="bottom",
-                                        y=1.02,
-                                        xanchor="right",
-                                        x=1
-                                    )
+                                    title='Bollinger Bands Chart',
+                                    height=400
                                 )
                                 
-                                # Display the figure
                                 st.plotly_chart(bb_fig, use_container_width=True)
                                 
                             except Exception as e:
                                 st.error(f"Error creating Bollinger Bands: {str(e)}")
+                                import traceback
+                                st.code(traceback.format_exc())
                         
                         if "Stochastic Oscillator" in selected_indicators:
                             st.markdown("### Stochastic Oscillator")
