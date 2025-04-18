@@ -92,6 +92,18 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
     all_data = {}
     all_info = {}
     
+    # Ensure ticker_symbols are individual symbols, not comma-separated strings
+    cleaned_tickers = []
+    for ticker in ticker_symbols:
+        # If for some reason a ticker contains commas, split it
+        if ',' in ticker:
+            cleaned_tickers.extend([t.strip() for t in ticker.split(',') if t.strip()])
+        else:
+            cleaned_tickers.append(ticker.strip())
+    
+    # Use the cleaned list
+    ticker_symbols = cleaned_tickers
+    
     # Save comparison search to history
     comparison_query = ','.join(ticker_symbols)
     save_search_to_history(comparison_query, 'comparison')
@@ -100,28 +112,40 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
     with st.spinner(f'Fetching data for {", ".join(ticker_symbols)}...'):
         for idx, ticker in enumerate(ticker_symbols):
             try:
+                # Skip empty tickers
+                if not ticker:
+                    continue
+                    
                 # Add a delay between API calls to avoid rate limiting
                 # But don't delay before the first request
                 if idx > 0:
-                    time.sleep(1)  # 1 second delay between API calls
+                    time.sleep(1.5)  # 1.5 second delay between API calls
                 
+                st.text(f"Fetching data for {ticker}...")
                 stock = yf.Ticker(ticker)
                 hist = stock.history(period=period)
                 
                 # Add an additional delay before getting stock.info
                 # as this is another API call
-                time.sleep(0.5)
+                time.sleep(0.75)
                 
-                if not hist.empty and stock.info is not None:
+                # Get info with error handling
+                try:
+                    info = stock.info
+                except Exception as info_error:
+                    st.warning(f"Error getting info for {ticker}: {info_error}")
+                    info = None
+                
+                if not hist.empty and info is not None:
                     all_data[ticker] = hist
-                    all_info[ticker] = stock.info
+                    all_info[ticker] = info
                     
                     # Cache data in database
                     try:
                         # Add stock info to the database
-                        company_name = stock.info.get('longName', ticker)
-                        sector = stock.info.get('sector', 'Unknown')
-                        industry = stock.info.get('industry', 'Unknown')
+                        company_name = info.get('longName', ticker)
+                        sector = info.get('sector', 'Unknown')
+                        industry = info.get('industry', 'Unknown')
                         
                         # Add to database
                         db.add_stock(ticker, company_name, sector, industry)
