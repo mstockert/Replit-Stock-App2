@@ -557,9 +557,8 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
                     continue
                     
                 # Strict validation for each ticker symbol
-                if ' ' in ticker or ',' in ticker or not ticker.isalnum():
-                    st.warning(f"Skipping invalid symbol: '{ticker}' (contains invalid characters)")
-                    st.error("Stock symbols should only contain letters and numbers (no spaces, commas, or special characters)")
+                if ' ' in ticker or ',' in ticker:
+                    st.warning(f"Skipping invalid symbol: '{ticker}' (contains spaces or commas)")
                     failed_fetches += 1
                     continue
                 
@@ -893,29 +892,46 @@ if analysis_type == "Single Stock Analysis":
     normalize_prices = False  # Not used in single mode
 
 elif analysis_type == "Stock Comparison":
-    # Stock comparison
-    # Stock symbol input as a text field
+    # Multi-stock comparison mode
+    st.sidebar.subheader("Compare Multiple Stocks")
+    
+    # Add very clear explanation before input
+    st.sidebar.markdown("""
+    ### How to Enter Stock Symbols:
+    - Use commas to separate multiple stock symbols
+    - Do NOT include spaces within a symbol
+    - Each symbol should be a valid stock ticker
+    
+    ✅ CORRECT: `AAPL,MSFT,GOOG`  
+    ❌ INCORRECT: `AAPL, MSFT, GOOG` (has spaces after commas)
+    """)
+    
+    # Default input based on session state
     if 'compare_symbols' in st.session_state:
         default_symbols = st.session_state['compare_symbols']
     else:
         default_symbols = "AAPL,MSFT,GOOG"
-        
+    
+    # Input for multiple ticker symbols with clear instructions
     tickers_input = st.sidebar.text_input(
-        "Enter Stock Symbols (comma-separated, e.g., AAPL,MSFT,GOOG):", 
-        default_symbols
+        "Enter Stock Symbols:", 
+        default_symbols,
+        help="Enter comma-separated stock symbols without spaces, e.g., AAPL,MSFT,GOOG"
     ).upper()
     
     st.session_state['compare_symbols'] = tickers_input
     
-    # Add explanation for user about input format with clear instructions
-    st.sidebar.markdown("""
-    💡 **Input Format:** Enter symbols separated by commas:
-    ```
-    AAPL,MSFT,GOOG
-    ```
+    # Add example symbols that users can click to use
+    st.sidebar.markdown("### Quick Examples:")
+    col1, col2 = st.sidebar.columns(2)
     
-    💡 **Important: Each symbol should be a valid stock ticker without spaces or special characters.**
-    """)
+    if col1.button("Tech Giants"):
+        st.session_state['compare_symbols'] = "AAPL,MSFT,GOOG,AMZN"
+        st.rerun()
+        
+    if col2.button("Popular ETFs"):
+        st.session_state['compare_symbols'] = "SPY,QQQ,VTI"
+        st.rerun()
     
     # Completely revised symbol parsing algorithm
     # First, detect if input is primarily space-separated or comma-separated
