@@ -86,7 +86,7 @@ def get_stock_data(ticker_symbol, period='1y'):
         
 # Function to get data for multiple stocks
 def get_multiple_stocks_data(ticker_symbols, period='1y'):
-    """Fetch data for multiple stock symbols"""
+    """Fetch data for multiple stock symbols one at a time"""
     import time  # Add import for time.sleep
     
     all_data = {}
@@ -110,54 +110,34 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
     
     # Use a spinner to show progress
     with st.spinner(f'Fetching data for {", ".join(ticker_symbols)}...'):
+        # Process each ticker separately and fetch its data
         for idx, ticker in enumerate(ticker_symbols):
             try:
                 # Skip empty tickers
                 if not ticker:
                     continue
-                    
+                
+                # Use the single stock function to get data for each ticker
+                # This ensures we're using the same code path that works for single stocks
+                st.text(f"Fetching data for {ticker}...")
+                
                 # Add a delay between API calls to avoid rate limiting
                 # But don't delay before the first request
                 if idx > 0:
-                    time.sleep(1.5)  # 1.5 second delay between API calls
+                    time.sleep(2)  # 2 second delay between stocks
                 
-                st.text(f"Fetching data for {ticker}...")
-                stock = yf.Ticker(ticker)
-                hist = stock.history(period=period)
+                # Call the single stock function that we know works
+                hist, info = get_stock_data(ticker, period)
                 
-                # Add an additional delay before getting stock.info
-                # as this is another API call
-                time.sleep(0.75)
-                
-                # Get info with error handling
-                try:
-                    info = stock.info
-                except Exception as info_error:
-                    st.warning(f"Error getting info for {ticker}: {info_error}")
-                    info = None
-                
-                if not hist.empty and info is not None:
+                # Only add to our collection if we got valid data
+                if hist is not None and info is not None:
                     all_data[ticker] = hist
                     all_info[ticker] = info
-                    
-                    # Cache data in database
-                    try:
-                        # Add stock info to the database
-                        company_name = info.get('longName', ticker)
-                        sector = info.get('sector', 'Unknown')
-                        industry = info.get('industry', 'Unknown')
-                        
-                        # Add to database
-                        db.add_stock(ticker, company_name, sector, industry)
-                        
-                        # Cache price data
-                        cache_stock_data(ticker, hist)
-                    except Exception as db_error:
-                        print(f"Could not cache data for {ticker}: {db_error}")
+                    st.success(f"Successfully retrieved data for {ticker}")
                 else:
-                    st.warning(f"No data found for ticker {ticker}. Skipping.")
+                    st.warning(f"Could not retrieve complete data for {ticker}. Skipping.")
             except Exception as e:
-                st.warning(f"Error fetching data for {ticker}: {e}")
+                st.warning(f"Error processing {ticker}: {e}")
     
     if not all_data:
         st.error("Could not retrieve data for any of the provided symbols.")
