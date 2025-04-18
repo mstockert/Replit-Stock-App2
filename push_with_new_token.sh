@@ -26,7 +26,7 @@ fi
 git add -A
 
 # Commit changes
-git commit -m "Initial commit: Stock Market Dashboard" --allow-empty
+git commit -m "Fix stock comparison feature and timezone handling" --allow-empty
 
 # Force push to GitHub using the token (use with caution)
 git push -f origin main

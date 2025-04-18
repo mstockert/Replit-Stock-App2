@@ -4,4 +4,5 @@ plotly
 psycopg2-binary
 sqlalchemy
 streamlit
+trafilatura
 yfinance

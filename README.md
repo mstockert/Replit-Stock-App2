@@ -6,11 +6,13 @@ A Streamlit-based stock data visualization platform that provides comprehensive 
 
 - Stock data visualization with interactive charts
 - Multi-stock comparison with correlation analysis
+- One-click example comparisons for common stock groupings
 - Stock price history tables and trend visualization
 - Watchlist management for tracking favorite stocks
 - Data export functionality (CSV)
 - Database storage for persistent data
 - Robust error handling and database connectivity fallbacks
+- Timezone consistency handling for mixed data sources
 
 ## Technology Stack
 
@@ -94,6 +96,16 @@ The application includes robust error handling for:
 - API failures
 - Invalid stock symbols
 - Data retrieval errors
+- Timezone inconsistencies between data sources
+
+## Recent Improvements
+
+### Stock Comparison Enhancement (April 2025)
+- Fixed parsing and validation of multiple stock symbols
+- Added one-click example buttons for quick comparisons
+- Improved user interface with clearer instructions
+- Fixed timezone inconsistency issues when combining data
+- Enhanced error handling and debugging information
 
 ## License
 
