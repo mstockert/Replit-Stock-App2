@@ -2105,12 +2105,92 @@ if submit_button:
                             - Bands narrowing can signal potential volatility increase
                             """)
                             
+                            # Create Bollinger Bands chart directly here (bypassing the function)
                             try:
-                                # The create_bollinger_chart function now handles missing columns
-                                fig_bb = create_bollinger_chart(indicators_data)
-                                st.plotly_chart(fig_bb, use_container_width=True)
+                                # Create a direct implementation
+                                df = hist_data.copy()
+                                
+                                # Calculate Bollinger Bands directly
+                                window = 20
+                                df['BB_Middle'] = df['Close'].rolling(window=window).mean()
+                                df['BB_Std'] = df['Close'].rolling(window=window).std()
+                                df['BB_Upper'] = df['BB_Middle'] + (df['BB_Std'] * 2)
+                                df['BB_Lower'] = df['BB_Middle'] - (df['BB_Std'] * 2)
+                                
+                                # Create the figure
+                                bb_fig = go.Figure()
+                                
+                                # Add price line
+                                bb_fig.add_trace(go.Scatter(
+                                    x=df.index,
+                                    y=df['Close'],
+                                    mode='lines',
+                                    name='Close Price',
+                                    line=dict(color='blue', width=1.5)
+                                ))
+                                
+                                # Add upper band
+                                bb_fig.add_trace(go.Scatter(
+                                    x=df.index,
+                                    y=df['BB_Upper'],
+                                    mode='lines',
+                                    name='Upper Band',
+                                    line=dict(color='red', width=1)
+                                ))
+                                
+                                # Add middle band (SMA 20)
+                                bb_fig.add_trace(go.Scatter(
+                                    x=df.index,
+                                    y=df['BB_Middle'],
+                                    mode='lines',
+                                    name='Middle Band (SMA 20)',
+                                    line=dict(color='orange', width=1)
+                                ))
+                                
+                                # Add lower band
+                                bb_fig.add_trace(go.Scatter(
+                                    x=df.index,
+                                    y=df['BB_Lower'],
+                                    mode='lines',
+                                    name='Lower Band',
+                                    line=dict(color='green', width=1)
+                                ))
+                                
+                                # Try to add fill between bands
+                                try:
+                                    bb_fig.add_trace(go.Scatter(
+                                        x=df.index.tolist() + df.index.tolist()[::-1],
+                                        y=df['BB_Upper'].tolist() + df['BB_Lower'].tolist()[::-1],
+                                        fill='toself',
+                                        fillcolor='rgba(0, 176, 246, 0.1)',
+                                        line=dict(color='rgba(255, 255, 255, 0)'),
+                                        name='Bollinger Band Range',
+                                        showlegend=True
+                                    ))
+                                except:
+                                    # Skip the fill if it causes issues
+                                    pass
+                                
+                                # Update layout
+                                bb_fig.update_layout(
+                                    title='Bollinger Bands',
+                                    xaxis_title='Date',
+                                    yaxis_title='Price',
+                                    height=400,
+                                    legend=dict(
+                                        orientation="h",
+                                        yanchor="bottom",
+                                        y=1.02,
+                                        xanchor="right",
+                                        x=1
+                                    )
+                                )
+                                
+                                # Display the figure
+                                st.plotly_chart(bb_fig, use_container_width=True)
+                                
                             except Exception as e:
-                                st.error(f"Error displaying Bollinger Bands: {str(e)}")
+                                st.error(f"Error creating Bollinger Bands: {str(e)}")
                         
                         if "Stochastic Oscillator" in selected_indicators:
                             st.markdown("### Stochastic Oscillator")
