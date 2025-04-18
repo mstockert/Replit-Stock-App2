@@ -751,13 +751,22 @@ def create_price_chart(data, company_name, time_period):
 
 # Function to create comparison chart for multiple stocks
 def create_comparison_chart(stock_data_dict, time_period, normalize=False):
-    """Create a chart comparing multiple stocks over time"""
+    """Create a chart comparing multiple stocks over time with timezone handling"""
     fig = go.Figure()
     
     # Add each stock's closing price
     for ticker, data in stock_data_dict.items():
+        # Make a copy to avoid modifying the original data
+        df = data.copy()
+        
+        # Handle timezone inconsistencies
+        if isinstance(df.index, pd.DatetimeIndex):
+            if df.index.tz is not None:
+                # Convert tz-aware to tz-naive to ensure compatibility
+                df.index = df.index.tz_localize(None)
+        
         # Get the closing prices
-        close_prices = data['Close']
+        close_prices = df['Close']
         
         # Normalize if requested (start from 100)
         if normalize:
@@ -765,7 +774,7 @@ def create_comparison_chart(stock_data_dict, time_period, normalize=False):
         
         # Add line to chart
         fig.add_trace(go.Scatter(
-            x=data.index,
+            x=df.index,
             y=close_prices,
             mode='lines',
             name=f'{ticker}',
@@ -1099,13 +1108,31 @@ if submit_button:
                     if not normalize_prices:
                         st.info("📌 For stocks with large price differences, enable 'Normalize Prices' in the sidebar for a better comparison.")
                     
-                    # Calculate daily returns for correlation
+                    # Calculate daily returns for correlation with timezone handling
                     returns_data = {}
-                    for ticker, data in all_stock_data.items():
-                        returns_data[ticker] = data['Close'].pct_change().dropna()
                     
-                    # Create a DataFrame with all returns
-                    returns_df = pd.DataFrame(returns_data)
+                    # First, standardize timezones across all datasets
+                    for ticker, data in all_stock_data.items():
+                        # Make a copy to avoid modifying the original data
+                        df_copy = data.copy()
+                        
+                        # Convert the index to timezone-naive datetime
+                        if isinstance(df_copy.index, pd.DatetimeIndex):
+                            if df_copy.index.tz is not None:
+                                # Convert tz-aware to tz-naive
+                                df_copy.index = df_copy.index.tz_localize(None)
+                        
+                        # Calculate returns on the standardized data
+                        returns_data[ticker] = df_copy['Close'].pct_change().dropna()
+                    
+                    try:
+                        # Create a DataFrame with all returns
+                        returns_df = pd.DataFrame(returns_data)
+                    except TypeError as e:
+                        st.error(f"Error creating returns dataframe: {e}")
+                        st.error("Unable to create correlation matrix due to timezone inconsistencies in the data.")
+                        # Create an empty DataFrame to prevent further errors
+                        returns_df = pd.DataFrame()
                     
                     # Correlation heatmap
                     if len(returns_df) > 5:  # Only if we have enough data points

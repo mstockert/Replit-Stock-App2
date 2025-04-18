@@ -1,0 +1,87 @@
+Stock Data Visualization Tool
+This app retrieves stock data from Yahoo Finance and visualizes it with interactive charts. Enter one or more stock symbols to get started!
+
+Debug: Tickers to compare: ['AMZN', 'GOOG', 'MSFT', 'AAPL']
+
+Debug - get_multiple_stocks_data received: ['AMZN', 'GOOG', 'MSFT', 'AAPL'] (type: list)
+
+Processing these symbols: GOOG, AMZN, MSFT, AAPL
+
+Found cached data for: GOOG, MSFT, AAPL. Will update where possible.
+
+Debug: Processing ticker symbol in comparison: 'GOOG'
+
+Fetching data for GOOG (1/4)...
+Debug: Processing ticker symbol: 'GOOG'
+
+Using cached data for GOOG from database.
+
+Successfully retrieved additional info for GOOG
+
+Successfully added GOOG to comparison.
+
+Debug: Processing ticker symbol in comparison: 'AMZN'
+
+Fetching data for AMZN (2/4)...
+Debug: Processing ticker symbol: 'AMZN'
+
+Successfully fetched data for AMZN from Yahoo Finance API.
+
+Successfully added AMZN to comparison.
+
+Debug: Processing ticker symbol in comparison: 'MSFT'
+
+Fetching data for MSFT (3/4)...
+Debug: Processing ticker symbol: 'MSFT'
+
+Using cached data for MSFT from database.
+
+Successfully retrieved additional info for MSFT
+
+Successfully added MSFT to comparison.
+
+Debug: Processing ticker symbol in comparison: 'AAPL'
+
+Fetching data for AAPL (4/4)...
+Debug: Processing ticker symbol: 'AAPL'
+
+Using cached data for AAPL from database.
+
+Successfully retrieved additional info for AAPL
+
+Successfully added AAPL to comparison.
+
+Successfully retrieved data for 4 symbols.
+
+Stock Comparison: AMZN, GOOG, MSFT, AAPL
+
+Price Comparison
+
+Performance Metrics
+
+Stock Data Tables
+Price Comparison (1 Year)
+TypeError: Cannot join tz-naive with tz-aware DatetimeIndex
+Traceback:
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 121, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 640, in code_to_exec
+    exec(code, module.__dict__)
+File "/home/runner/workspace/app.py", line 1108, in <module>
+    returns_df = pd.DataFrame(returns_data)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/frame.py", line 778, in __init__
+    mgr = dict_to_mgr(data, index, columns, dtype=dtype, copy=copy, typ=manager)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/internals/construction.py", line 503, in dict_to_mgr
+    return arrays_to_mgr(arrays, columns, index, dtype=dtype, typ=typ, consolidate=copy)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/internals/construction.py", line 114, in arrays_to_mgr
+    index = _extract_index(arrays)
+            ^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/internals/construction.py", line 670, in _extract_index
+    index = union_indexes(indexes)
+            ^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pandas/core/indexes/api.py", line 295, in union_indexes
+    raise TypeError("Cannot join tz-naive with tz-aware DatetimeIndex")
