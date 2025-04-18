@@ -12,6 +12,9 @@ import json
 # Import yfinance with monkey patches to prevent batch requests
 import yfinance as yf
 
+# Import technical analysis indicators
+import ta
+
 # Aggressive monkey-patching to prevent any batch requests in yfinance
 # This will intercept any attempts to make batch requests and force single requests instead
 
@@ -702,6 +705,40 @@ def get_financial_metrics(info):
     return metrics
 
 # Function to create price chart
+def calculate_technical_indicators(data):
+    """Calculate various technical indicators for the stock data"""
+    # Make a copy of the dataframe to avoid modifying the original
+    df = data.copy()
+    
+    # RSI (Relative Strength Index)
+    df['RSI'] = ta.momentum.RSIIndicator(df['Close'], window=14).rsi()
+    
+    # MACD (Moving Average Convergence Divergence)
+    macd = ta.trend.MACD(df['Close'])
+    df['MACD'] = macd.macd()
+    df['MACD_Signal'] = macd.macd_signal()
+    df['MACD_Diff'] = macd.macd_diff()
+    
+    # Bollinger Bands
+    bollinger = ta.volatility.BollingerBands(df['Close'])
+    df['Bollinger_High'] = bollinger.bollinger_hband()
+    df['Bollinger_Low'] = bollinger.bollinger_lband()
+    df['Bollinger_Mid'] = bollinger.bollinger_mavg()
+    
+    # Stochastic Oscillator
+    stoch = ta.momentum.StochasticOscillator(df['High'], df['Low'], df['Close'])
+    df['Stochastic_k'] = stoch.stoch()
+    df['Stochastic_d'] = stoch.stoch_signal()
+    
+    # Average Directional Index (ADX)
+    adx = ta.trend.ADXIndicator(df['High'], df['Low'], df['Close'])
+    df['ADX'] = adx.adx()
+    
+    # Commodity Channel Index (CCI)
+    df['CCI'] = ta.trend.CCIIndicator(df['High'], df['Low'], df['Close']).cci()
+    
+    return df
+
 def create_price_chart(data, company_name, time_period):
     """Create an interactive price chart using plotly"""
     fig = go.Figure()
@@ -750,6 +787,238 @@ def create_price_chart(data, company_name, time_period):
     return fig
 
 # Function to create comparison chart for multiple stocks
+def create_rsi_chart(data):
+    """Create an RSI (Relative Strength Index) chart"""
+    fig = go.Figure()
+    
+    # Add RSI line
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['RSI'],
+        mode='lines',
+        name='RSI',
+        line=dict(color='blue', width=1.5)
+    ))
+    
+    # Add overbought and oversold lines
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=[70] * len(data.index),
+        mode='lines',
+        name='Overbought (70)',
+        line=dict(color='red', width=1, dash='dash')
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=[30] * len(data.index),
+        mode='lines',
+        name='Oversold (30)',
+        line=dict(color='green', width=1, dash='dash')
+    ))
+    
+    # Add a line at the 50 mark as neutral
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=[50] * len(data.index),
+        mode='lines',
+        name='Neutral (50)',
+        line=dict(color='gray', width=1, dash='dot')
+    ))
+    
+    # Update layout
+    fig.update_layout(
+        title='Relative Strength Index (RSI)',
+        xaxis_title='Date',
+        yaxis_title='RSI Value',
+        height=400,
+        yaxis=dict(range=[0, 100]),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=0, r=0, t=30, b=0)
+    )
+    
+    return fig
+
+def create_macd_chart(data):
+    """Create a MACD (Moving Average Convergence Divergence) chart"""
+    fig = go.Figure()
+    
+    # Add MACD line
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['MACD'],
+        mode='lines',
+        name='MACD',
+        line=dict(color='blue', width=1.5)
+    ))
+    
+    # Add MACD signal line
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['MACD_Signal'],
+        mode='lines',
+        name='Signal Line',
+        line=dict(color='red', width=1.5)
+    ))
+    
+    # Add MACD histogram
+    colors = ['green' if val >= 0 else 'red' for val in data['MACD_Diff']]
+    fig.add_trace(go.Bar(
+        x=data.index,
+        y=data['MACD_Diff'],
+        name='MACD Histogram',
+        marker_color=colors
+    ))
+    
+    # Update layout
+    fig.update_layout(
+        title='Moving Average Convergence Divergence (MACD)',
+        xaxis_title='Date',
+        yaxis_title='MACD Value',
+        height=400,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=0, r=0, t=30, b=0)
+    )
+    
+    return fig
+
+def create_bollinger_chart(data):
+    """Create a Bollinger Bands chart"""
+    fig = go.Figure()
+    
+    # Add close price
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['Close'],
+        mode='lines',
+        name='Close Price',
+        line=dict(color='blue', width=1.5)
+    ))
+    
+    # Add Bollinger Bands
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['Bollinger_High'],
+        mode='lines',
+        name='Upper Band',
+        line=dict(color='red', width=1)
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['Bollinger_Mid'],
+        mode='lines',
+        name='Middle Band (SMA)',
+        line=dict(color='orange', width=1)
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['Bollinger_Low'],
+        mode='lines',
+        name='Lower Band',
+        line=dict(color='green', width=1)
+    ))
+    
+    # Add fill between upper and lower bands
+    fig.add_trace(go.Scatter(
+        x=data.index.tolist() + data.index.tolist()[::-1],
+        y=data['Bollinger_High'].tolist() + data['Bollinger_Low'].tolist()[::-1],
+        fill='toself',
+        fillcolor='rgba(0, 176, 246, 0.1)',
+        line=dict(color='rgba(255, 255, 255, 0)'),
+        name='Bollinger Band Range',
+        showlegend=True
+    ))
+    
+    # Update layout
+    fig.update_layout(
+        title='Bollinger Bands',
+        xaxis_title='Date',
+        yaxis_title='Price',
+        height=400,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=0, r=0, t=30, b=0)
+    )
+    
+    return fig
+
+def create_stochastic_chart(data):
+    """Create a Stochastic Oscillator chart"""
+    fig = go.Figure()
+    
+    # Add %K line
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['Stochastic_k'],
+        mode='lines',
+        name='%K Line',
+        line=dict(color='blue', width=1.5)
+    ))
+    
+    # Add %D line
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['Stochastic_d'],
+        mode='lines',
+        name='%D Line',
+        line=dict(color='red', width=1.5)
+    ))
+    
+    # Add overbought and oversold lines
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=[80] * len(data.index),
+        mode='lines',
+        name='Overbought (80)',
+        line=dict(color='red', width=1, dash='dash')
+    ))
+    
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=[20] * len(data.index),
+        mode='lines',
+        name='Oversold (20)',
+        line=dict(color='green', width=1, dash='dash')
+    ))
+    
+    # Update layout
+    fig.update_layout(
+        title='Stochastic Oscillator',
+        xaxis_title='Date',
+        yaxis_title='Value',
+        height=400,
+        yaxis=dict(range=[0, 100]),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=0, r=0, t=30, b=0)
+    )
+    
+    return fig
+
 def create_comparison_chart(stock_data_dict, time_period, normalize=False):
     """Create a chart comparing multiple stocks over time with timezone handling"""
     fig = go.Figure()
