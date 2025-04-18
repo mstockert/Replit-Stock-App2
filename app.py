@@ -121,59 +121,118 @@ This app retrieves stock data from Yahoo Finance and visualizes it with interact
 Enter one or more stock symbols to get started!
 """)
 
-# Function to get stock data
-def get_stock_data(ticker_symbol, period='1y'):
-    """Fetch stock data using yfinance"""
-    import time  # Add import for time.sleep
+# Function to get stock data with retry mechanism and fallback
+def get_stock_data(ticker_symbol, period='1y', max_retries=3):
+    """Fetch stock data using yfinance with retry mechanism and fallback to database"""
+    import time
     
+    # Clean up the ticker symbol
+    ticker_symbol = ticker_symbol.strip().upper()
+    
+    # Try to use the database first for recent data
     try:
-        # Get stock data
-        stock = yf.Ticker(ticker_symbol)
-        hist = stock.history(period=period)
-        
-        # Check if data is empty
-        if hist.empty:
-            st.error(f"No data found for ticker {ticker_symbol}. Please check the symbol and try again.")
-            return None, None
-        
-        # Add a short delay before getting stock.info to avoid rate limiting
-        time.sleep(0.5)
-        
-        # Get company info
-        info = stock.info
-        
-        # Check if info is None or empty
-        if info is None or not info:
-            st.error(f"Could not retrieve information for {ticker_symbol}. Yahoo Finance API may be rate limiting.")
-            return None, None
-        
-        # Save search to history
-        save_search_to_history(ticker_symbol, 'single')
-        
-        # Cache data in database
+        db_data = db.get_stock_prices(ticker_symbol)
+        if db_data is not None and not db_data.empty:
+            st.info(f"Using cached data for {ticker_symbol} from database.")
+            # Get stock info
+            try:
+                # Get a fresh ticker object
+                stock = yf.Ticker(ticker_symbol)
+                # Add a short delay before getting stock.info to avoid rate limiting
+                time.sleep(0.5)
+                info = stock.info
+                if info and len(info) > 1:  # Make sure it's not empty or just the symbol
+                    st.success(f"Successfully retrieved additional info for {ticker_symbol}")
+                    return db_data, info
+            except Exception as e:
+                st.warning(f"Could not get fresh data for {ticker_symbol}: {e}. Using cached data only.")
+            
+            # If we couldn't get fresh info, try to create minimal info
+            minimal_info = {'symbol': ticker_symbol, 'longName': ticker_symbol}
+            return db_data, minimal_info
+    except Exception as db_error:
+        st.info(f"No cached data for {ticker_symbol} in database. Fetching fresh data.")
+    
+    # If we don't have cached data or user wants fresh data, try to get it from Yahoo Finance
+    for attempt in range(max_retries):
         try:
-            # Add stock info to the database
-            company_name = info.get('longName', ticker_symbol)
-            sector = info.get('sector', 'Unknown')
-            industry = info.get('industry', 'Unknown')
+            # Get stock data
+            stock = yf.Ticker(ticker_symbol)
             
-            # Add to database
-            db.add_stock(ticker_symbol, company_name, sector, industry)
+            # Use a try/except block specifically for the history call
+            try:
+                hist = stock.history(period=period)
+            except Exception as hist_error:
+                st.error(f"Error fetching history for {ticker_symbol}: {hist_error}")
+                if attempt < max_retries - 1:
+                    st.warning(f"Retrying ({attempt + 1}/{max_retries})...")
+                    time.sleep(2)  # Wait before retry
+                    continue
+                else:
+                    st.error(f"Failed to fetch history after {max_retries} attempts.")
+                    return None, None
             
-            # Cache price data
-            cache_stock_data(ticker_symbol, hist)
-        except Exception as db_error:
-            st.warning(f"Note: Could not cache data in database: {db_error}")
-        
-        return hist, info
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-        return None, None
+            # Check if data is empty
+            if hist.empty:
+                st.error(f"No data found for ticker {ticker_symbol}. Yahoo Finance may have changed their API or the symbol could be delisted.")
+                if attempt < max_retries - 1:
+                    st.warning(f"Retrying ({attempt + 1}/{max_retries})...")
+                    time.sleep(2)  # Wait before retry
+                    continue
+                else:
+                    st.error(f"Failed to fetch data after {max_retries} attempts.")
+                    return None, None
+            
+            # Add a short delay before getting stock.info to avoid rate limiting
+            time.sleep(1)
+            
+            # Get company info with specific error handling
+            try:
+                info = stock.info
+            except Exception as info_error:
+                st.warning(f"Could not retrieve detailed information for {ticker_symbol}: {info_error}")
+                # Create minimal info with just the symbol
+                info = {'symbol': ticker_symbol, 'longName': ticker_symbol}
+            
+            # Check if info has useful data beyond just the symbol
+            if not info or len(info) <= 1:
+                st.warning(f"Retrieved minimal information for {ticker_symbol}. Some details may be missing.")
+                # Enhance the minimal info
+                info = {'symbol': ticker_symbol, 'longName': ticker_symbol}
+            
+            # Save search to history
+            save_search_to_history(ticker_symbol, 'single')
+            
+            # Cache data in database
+            try:
+                # Add stock info to the database
+                company_name = info.get('longName', ticker_symbol)
+                sector = info.get('sector', 'Unknown')
+                industry = info.get('industry', 'Unknown')
+                
+                # Add to database
+                db.add_stock(ticker_symbol, company_name, sector, industry)
+                
+                # Cache price data
+                cache_stock_data(ticker_symbol, hist)
+                st.success(f"Successfully cached data for {ticker_symbol} in database.")
+            except Exception as db_error:
+                st.warning(f"Note: Could not cache data in database: {db_error}")
+            
+            return hist, info
+            
+        except Exception as e:
+            if attempt < max_retries - 1:
+                st.warning(f"Error retrieving data for {ticker_symbol}: {e}. Retrying ({attempt + 1}/{max_retries})...")
+                time.sleep(2)  # Wait before retry
+            else:
+                st.error(f"Failed to retrieve data for {ticker_symbol} after {max_retries} attempts: {e}")
+                return None, None
         
 # Function to get data for multiple stocks
 def get_multiple_stocks_data(ticker_symbols, period='1y'):
-    """Fetch data for multiple stock symbols one at a time"""
-    import time  # Add import for time.sleep
+    """Fetch data for multiple stock symbols one at a time with fallback mechanisms"""
+    import time
     
     all_data = {}
     all_info = {}
@@ -187,15 +246,35 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
         else:
             cleaned_tickers.append(ticker.strip())
     
-    # Use the cleaned list
-    ticker_symbols = cleaned_tickers
+    # Use the cleaned list and make sure they're all uppercase
+    ticker_symbols = [t.upper() for t in cleaned_tickers if t]
+    
+    if not ticker_symbols:
+        st.error("No valid ticker symbols provided.")
+        return None, None
     
     # Save comparison search to history
     comparison_query = ','.join(ticker_symbols)
     save_search_to_history(comparison_query, 'comparison')
     
+    # First, check database for any cached data
+    cached_symbols = []
+    for ticker in ticker_symbols:
+        try:
+            db_data = db.get_stock_prices(ticker)
+            if db_data is not None and not db_data.empty:
+                cached_symbols.append(ticker)
+        except:
+            pass
+    
+    if cached_symbols:
+        st.info(f"Found cached data for: {', '.join(cached_symbols)}. Will update where possible.")
+    
     # Use a spinner to show progress
     with st.spinner(f'Fetching data for {", ".join(ticker_symbols)}...'):
+        successful_fetches = 0
+        failed_fetches = 0
+        
         # Process each ticker separately and fetch its data
         for idx, ticker in enumerate(ticker_symbols):
             try:
@@ -203,42 +282,98 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
                 if not ticker:
                     continue
                 
-                # Use the single stock function to get data for each ticker
-                # This ensures we're using the same code path that works for single stocks
-                st.text(f"Fetching data for {ticker}...")
+                # Show progress
+                progress_text = f"Fetching data for {ticker} ({idx+1}/{len(ticker_symbols)})..."
+                st.text(progress_text)
                 
                 # Add a delay between API calls to avoid rate limiting
                 # But don't delay before the first request
                 if idx > 0:
-                    time.sleep(2)  # 2 second delay between stocks
+                    time.sleep(3)  # 3 second delay between stocks to avoid rate limiting
                 
-                # Call the single stock function that we know works
+                # Call the enhanced stock function with retry mechanism
                 hist, info = get_stock_data(ticker, period)
                 
                 # Only add to our collection if we got valid data
                 if hist is not None and info is not None:
                     all_data[ticker] = hist
                     all_info[ticker] = info
-                    st.success(f"Successfully retrieved data for {ticker}")
+                    successful_fetches += 1
+                    st.success(f"Successfully added {ticker} to comparison.")
                 else:
-                    st.warning(f"Could not retrieve complete data for {ticker}. Skipping.")
+                    failed_fetches += 1
+                    st.warning(f"Could not retrieve data for {ticker}. Will not include in comparison.")
             except Exception as e:
+                failed_fetches += 1
                 st.warning(f"Error processing {ticker}: {e}")
     
-    if not all_data:
+    # Provide a summary of the data fetching operation
+    if successful_fetches > 0:
+        st.success(f"Successfully retrieved data for {successful_fetches} symbols.")
+        if failed_fetches > 0:
+            st.warning(f"Failed to retrieve data for {failed_fetches} symbols.")
+    else:
         st.error("Could not retrieve data for any of the provided symbols.")
+        # If available, try to use the database as a last resort
+        try:
+            st.warning("Attempting to use cached data from database as fallback...")
+            for ticker in ticker_symbols:
+                db_data = db.get_stock_prices(ticker)
+                if db_data is not None and not db_data.empty:
+                    all_data[ticker] = db_data
+                    all_info[ticker] = {'symbol': ticker, 'longName': ticker}
+                    st.info(f"Using cached data for {ticker} from database.")
+        except Exception as db_error:
+            st.error(f"Database fallback also failed: {db_error}")
+    
+    if not all_data:
+        st.error("No data available for comparison. Please try different symbols or a different time period.")
         return None, None
     
     return all_data, all_info
 
-# Function to get key financial metrics
+# Function to get key financial metrics with better fallbacks
 def get_financial_metrics(info):
-    """Extract key financial metrics from stock info"""
+    """Extract key financial metrics from stock info with proper fallbacks"""
     metrics = {}
+    
+    # If info is None or empty, create minimal valid info
+    if info is None or not info:
+        st.warning("No detailed information available. Showing minimal data only.")
+        symbol = "Unknown"
+        if isinstance(info, dict) and 'symbol' in info:
+            symbol = info['symbol']
+        
+        # Create minimal info with default values
+        metrics = {
+            'Company Name': 'Data Unavailable',
+            'Symbol': symbol,
+            'Sector': 'N/A',
+            'Industry': 'N/A',
+            'Current Price': 'N/A',
+            'Previous Close': 'N/A',
+            'Open': 'N/A',
+            'Day Low': 'N/A',
+            'Day High': 'N/A',
+            '52 Week Low': 'N/A',
+            '52 Week High': 'N/A',
+            'Volume': 'N/A',
+            'Avg Volume': 'N/A',
+            'Market Cap': 'N/A',
+            'P/E Ratio': 'N/A',
+            'EPS': 'N/A',
+            'Forward P/E': 'N/A',
+            'Dividend Yield': 'N/A',
+            'Beta': 'N/A',
+            'Target Price': 'N/A'
+        }
+        return metrics
     
     try:
         # Basic info
-        metrics['Company Name'] = info.get('longName', 'N/A')
+        symbol = info.get('symbol', 'Unknown Ticker')
+        metrics['Symbol'] = symbol
+        metrics['Company Name'] = info.get('longName', symbol)
         metrics['Sector'] = info.get('sector', 'N/A')
         metrics['Industry'] = info.get('industry', 'N/A')
         
@@ -269,7 +404,12 @@ def get_financial_metrics(info):
         metrics['Target Price'] = info.get('targetMeanPrice', 'N/A')
         
     except Exception as e:
-        st.warning(f"Could not retrieve all metrics: {e}")
+        st.warning(f"Error retrieving metrics: {e}")
+        # Ensure we at least have the basic fields
+        if 'Company Name' not in metrics:
+            metrics['Company Name'] = info.get('symbol', 'Unknown')
+        if 'Symbol' not in metrics:
+            metrics['Symbol'] = info.get('symbol', 'Unknown')
     
     return metrics
 
