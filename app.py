@@ -314,8 +314,11 @@ def get_stock_data(ticker_symbol, period='1y', max_retries=3):
     """Fetch stock data using yfinance with retry mechanism and fallback systems"""
     import time
     
-    # Clean up the ticker symbol and validate
+    # Clean up the ticker symbol and strictly validate it
     ticker_symbol = ticker_symbol.strip().upper()
+    
+    # Debug print - show exactly what's being processed
+    st.write(f"Debug: Processing ticker symbol: '{ticker_symbol}'")
     
     # Check for invalid ticker symbols (with spaces or commas)
     if ',' in ticker_symbol or ' ' in ticker_symbol:
@@ -553,11 +556,15 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
                 if not ticker:
                     continue
                     
-                # Verify this is a single symbol without spaces
-                if ' ' in ticker:
-                    st.warning(f"Skipping invalid symbol: '{ticker}' (contains spaces)")
+                # Strict validation for each ticker symbol
+                if ' ' in ticker or ',' in ticker or not ticker.isalnum():
+                    st.warning(f"Skipping invalid symbol: '{ticker}' (contains invalid characters)")
+                    st.error("Stock symbols should only contain letters and numbers (no spaces, commas, or special characters)")
                     failed_fetches += 1
                     continue
+                
+                # Debug print - show exactly what's being processed
+                st.write(f"Debug: Processing ticker symbol in comparison: '{ticker}'")
                 
                 # Show progress
                 progress_text = f"Fetching data for {ticker} ({idx+1}/{len(ticker_symbols)})..."
@@ -900,10 +907,14 @@ elif analysis_type == "Stock Comparison":
     
     st.session_state['compare_symbols'] = tickers_input
     
-    # Add explanation for user about input format
+    # Add explanation for user about input format with clear instructions
     st.sidebar.markdown("""
-    💡 **Input Format:** You can enter symbols separated by commas (AAPL,MSFT) 
-    or spaces (AAPL MSFT). Multiple formats will be properly parsed.
+    💡 **Input Format:** Enter symbols separated by commas:
+    ```
+    AAPL,MSFT,GOOG
+    ```
+    
+    💡 **Important: Each symbol should be a valid stock ticker without spaces or special characters.**
     """)
     
     # Completely revised symbol parsing algorithm
