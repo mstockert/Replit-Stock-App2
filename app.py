@@ -2088,8 +2088,36 @@ if submit_button:
                             - Price reaching the lower band may indicate oversold conditions
                             - Bands narrowing can signal potential volatility increase
                             """)
-                            fig_bb = create_bollinger_chart(indicators_data)
-                            st.plotly_chart(fig_bb, use_container_width=True)
+                            
+                            # Add some debug information
+                            try:
+                                # Check if Bollinger Band columns exist in the data
+                                bb_columns = ['Bollinger_High', 'Bollinger_Mid', 'Bollinger_Low']
+                                missing_columns = [col for col in bb_columns if col not in indicators_data.columns]
+                                
+                                if missing_columns:
+                                    st.error(f"Missing Bollinger Band columns: {', '.join(missing_columns)}")
+                                    # Check indicator calculation
+                                    st.info("Recalculating Bollinger Bands directly")
+                                    window = 20
+                                    # Calculate Bollinger Bands manually
+                                    indicators_data['SMA20'] = indicators_data['Close'].rolling(window=window).mean()
+                                    indicators_data['STD20'] = indicators_data['Close'].rolling(window=window).std()
+                                    indicators_data['Bollinger_High'] = indicators_data['SMA20'] + (indicators_data['STD20'] * 2)
+                                    indicators_data['Bollinger_Mid'] = indicators_data['SMA20']
+                                    indicators_data['Bollinger_Low'] = indicators_data['SMA20'] - (indicators_data['STD20'] * 2)
+                                
+                                # Check for NaN values
+                                na_counts = indicators_data[bb_columns].isna().sum()
+                                if na_counts.sum() > 0:
+                                    st.warning(f"NaN values detected in Bollinger Bands: {na_counts.to_dict()}")
+                                
+                                fig_bb = create_bollinger_chart(indicators_data)
+                                st.plotly_chart(fig_bb, use_container_width=True)
+                            except Exception as e:
+                                st.error(f"Error creating Bollinger Bands chart: {str(e)}")
+                                import traceback
+                                st.code(traceback.format_exc())
                         
                         if "Stochastic Oscillator" in selected_indicators:
                             st.markdown("### Stochastic Oscillator")
