@@ -895,21 +895,49 @@ elif analysis_type == "Stock Comparison":
     
     st.session_state['compare_symbols'] = tickers_input
     
-    # Convert input to list and clean with improved parsing
-    # First handle commas
-    ticker_parts = [part.strip() for part in tickers_input.split(",") if part.strip()]
+    # Add explanation for user about input format
+    st.sidebar.markdown("""
+    💡 **Input Format:** You can enter symbols separated by commas (AAPL,MSFT) 
+    or spaces (AAPL MSFT). Multiple formats will be properly parsed.
+    """)
     
-    # Then handle possible spaces (if user used spaces instead of commas)
+    # Completely revised symbol parsing algorithm
+    # First, detect if input is primarily space-separated or comma-separated
+    if ',' in tickers_input:
+        # Comma-separated format: First split by commas
+        initial_parts = [part.strip() for part in tickers_input.split(',')]
+    else:
+        # Space-separated format: Split the whole input by spaces
+        initial_parts = [part.strip() for part in tickers_input.split()]
+    
+    # Process each part to handle mixed formats
     tickers = []
-    for part in ticker_parts:
-        if ' ' in part and ',' not in part and len(part.split()) > 1:
-            # This might be multiple tickers separated by spaces
-            tickers.extend([t.strip() for t in part.split() if t.strip()])
+    for part in initial_parts:
+        if not part:  # Skip empty parts
+            continue
+            
+        # If this part still has spaces and wasn't comma-separated, split further
+        if ' ' in part and ',' not in tickers_input:
+            # Split by space and add each as a ticker
+            space_parts = [t.strip() for t in part.split() if t.strip()]
+            tickers.extend(space_parts)
         else:
-            tickers.append(part.strip())
+            # Single ticker (or already processed)
+            tickers.append(part)
     
-    # Remove any duplicates and ensure they're uppercase
-    tickers = list(set([ticker.upper() for ticker in tickers if ticker]))
+    # Final validation and cleanup
+    cleaned_tickers = []
+    for ticker in tickers:
+        # Only include if it's not blank and doesn't contain spaces
+        if ticker and ' ' not in ticker:
+            cleaned_tickers.append(ticker.upper())
+    
+    # Remove duplicates
+    tickers = list(set(cleaned_tickers))
+    
+    # Show what we've parsed
+    if tickers:
+        st.sidebar.success(f"Found symbols: {', '.join(tickers)}")
     
     # Time period selection
     selected_period = st.sidebar.selectbox("Select Time Period", list(time_periods.keys()), index=4)
@@ -933,14 +961,38 @@ elif analysis_type == "Stock Comparison":
                     tickers_input = search['query']
                     
                     # Use the same improved parsing logic for recent searches
-                    ticker_parts = [part.strip() for part in tickers_input.split(",") if part.strip()]
+                    # First, detect if input is primarily space-separated or comma-separated
+                    if ',' in tickers_input:
+                        # Comma-separated format: First split by commas
+                        initial_parts = [part.strip() for part in tickers_input.split(',')]
+                    else:
+                        # Space-separated format: Split the whole input by spaces
+                        initial_parts = [part.strip() for part in tickers_input.split()]
+                    
+                    # Process each part to handle mixed formats
                     tickers = []
-                    for part in ticker_parts:
-                        if ' ' in part and ',' not in part and len(part.split()) > 1:
-                            tickers.extend([t.strip() for t in part.split() if t.strip()])
+                    for part in initial_parts:
+                        if not part:  # Skip empty parts
+                            continue
+                            
+                        # If this part still has spaces and wasn't comma-separated, split further
+                        if ' ' in part and ',' not in tickers_input:
+                            # Split by space and add each as a ticker
+                            space_parts = [t.strip() for t in part.split() if t.strip()]
+                            tickers.extend(space_parts)
                         else:
-                            tickers.append(part.strip())
-                    tickers = list(set([t.upper() for t in tickers if t]))
+                            # Single ticker (or already processed)
+                            tickers.append(part)
+                    
+                    # Final validation and cleanup
+                    cleaned_tickers = []
+                    for ticker in tickers:
+                        # Only include if it's not blank and doesn't contain spaces
+                        if ticker and ' ' not in ticker:
+                            cleaned_tickers.append(ticker.upper())
+                    
+                    # Remove duplicates
+                    tickers = list(set(cleaned_tickers))
                     
                     st.session_state['compare_symbols'] = tickers_input
                     submit_button = True
