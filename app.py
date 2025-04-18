@@ -1568,7 +1568,7 @@ if submit_button:
                     st.write(f"**52 Week Range:** ${metrics['52 Week Low']} - ${metrics['52 Week High']}" if isinstance(metrics['52 Week Low'], (int, float)) else f"**52 Week Range:** {metrics['52 Week Low']} - {metrics['52 Week High']}")
                 
                 # Create tabs for different views
-                tab1, tab2, tab3 = st.tabs(["Price Chart", "Key Metrics", "Historical Data"])
+                tab1, tab2, tab3, tab4 = st.tabs(["Price Chart", "Technical Indicators", "Key Metrics", "Historical Data"])
                 
                 with tab1:
                     # Create and display price chart
@@ -1576,7 +1576,7 @@ if submit_button:
                     st.plotly_chart(fig, use_container_width=True)
                     
                     # Simple moving average
-                    st.subheader("Technical Indicators")
+                    st.subheader("Moving Averages")
                     sma_options = [5, 10, 20, 50, 100, 200]
                     selected_smas = st.multiselect("Add Simple Moving Averages (SMA)", sma_options, default=[20, 50])
                     
@@ -1623,6 +1623,63 @@ if submit_button:
                         st.plotly_chart(fig_sma, use_container_width=True)
                 
                 with tab2:
+                    st.subheader("Technical Indicators")
+                    
+                    # Calculate technical indicators
+                    with st.spinner("Calculating technical indicators..."):
+                        # Calculate all technical indicators
+                        indicators_data = calculate_technical_indicators(hist_data)
+                        
+                        # Create indicator selection
+                        indicator_options = ["RSI", "MACD", "Bollinger Bands", "Stochastic Oscillator"]
+                        selected_indicators = st.multiselect("Select Technical Indicators", indicator_options, default=["RSI", "MACD"])
+                        
+                        if "RSI" in selected_indicators:
+                            st.markdown("### Relative Strength Index (RSI)")
+                            st.markdown("""
+                            RSI measures the magnitude of recent price changes to evaluate overbought or oversold conditions.
+                            - Values above 70 generally indicate overbought conditions (potential sell signal)
+                            - Values below 30 generally indicate oversold conditions (potential buy signal)
+                            - The centerline at 50 can indicate the trend direction
+                            """)
+                            fig_rsi = create_rsi_chart(indicators_data)
+                            st.plotly_chart(fig_rsi, use_container_width=True)
+                        
+                        if "MACD" in selected_indicators:
+                            st.markdown("### Moving Average Convergence Divergence (MACD)")
+                            st.markdown("""
+                            MACD is a trend-following momentum indicator that shows the relationship between two moving averages.
+                            - When MACD crosses above the signal line, it's a potential buy signal
+                            - When MACD crosses below the signal line, it's a potential sell signal
+                            - The histogram shows the difference between MACD and signal line
+                            """)
+                            fig_macd = create_macd_chart(indicators_data)
+                            st.plotly_chart(fig_macd, use_container_width=True)
+                        
+                        if "Bollinger Bands" in selected_indicators:
+                            st.markdown("### Bollinger Bands")
+                            st.markdown("""
+                            Bollinger Bands consist of a middle band (SMA) with two outer bands (standard deviations).
+                            - Price reaching the upper band may indicate overbought conditions
+                            - Price reaching the lower band may indicate oversold conditions
+                            - Bands narrowing can signal potential volatility increase
+                            """)
+                            fig_bb = create_bollinger_chart(indicators_data)
+                            st.plotly_chart(fig_bb, use_container_width=True)
+                        
+                        if "Stochastic Oscillator" in selected_indicators:
+                            st.markdown("### Stochastic Oscillator")
+                            st.markdown("""
+                            The Stochastic Oscillator compares a stock's closing price to its price range over a period.
+                            - Values above 80 indicate overbought conditions
+                            - Values below 20 indicate oversold conditions
+                            - %K line crossing above %D line is a potential buy signal
+                            - %K line crossing below %D line is a potential sell signal
+                            """)
+                            fig_stoch = create_stochastic_chart(indicators_data)
+                            st.plotly_chart(fig_stoch, use_container_width=True)
+                
+                with tab3:
                     st.subheader("Key Financial Metrics")
                     
                     # Divide metrics into categories for display
@@ -1663,7 +1720,7 @@ if submit_button:
                         except:
                             pass
                 
-                with tab3:
+                with tab4:
                     st.subheader("Historical Stock Data")
                     
                     # Format data for display
@@ -1814,8 +1871,8 @@ else:
     with feature_cols[0]:
         st.markdown("**Single Stock Analysis**")
         st.markdown("- Interactive price charts with candlestick patterns")
+        st.markdown("- Advanced technical indicators (RSI, MACD, Bollinger Bands)")
         st.markdown("- Key financial metrics and company information")
-        st.markdown("- Technical indicators including SMAs")
         st.markdown("- Historical data available for download")
     
     with feature_cols[1]:
