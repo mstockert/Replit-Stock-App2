@@ -758,6 +758,36 @@ def create_price_chart(data, company_name, time_period):
         name='Price'
     ))
     
+    # Add 20-day moving average if present
+    if 'MA20' in data.columns:
+        fig.add_trace(go.Scatter(
+            x=data.index,
+            y=data['MA20'],
+            mode='lines',
+            name='20-day MA',
+            line=dict(color='#17BECF', width=1.5)
+        ))
+    
+    # Add 50-day moving average if present
+    if 'MA50' in data.columns:
+        fig.add_trace(go.Scatter(
+            x=data.index,
+            y=data['MA50'],
+            mode='lines',
+            name='50-day MA', 
+            line=dict(color='#B6267E', width=1.5)
+        ))
+    
+    # Add 200-day moving average if present
+    if 'MA200' in data.columns:
+        fig.add_trace(go.Scatter(
+            x=data.index,
+            y=data['MA200'],
+            mode='lines',
+            name='200-day MA',
+            line=dict(color='#2E55A5', width=2)
+        ))
+    
     # Add volume as bar chart on secondary y-axis
     fig.add_trace(go.Bar(
         x=data.index,
