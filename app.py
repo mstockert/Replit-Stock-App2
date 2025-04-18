@@ -933,10 +933,22 @@ def create_bollinger_chart(data):
     """Create a Bollinger Bands chart"""
     fig = go.Figure()
     
+    # Ensure we're working with a clean copy of the data
+    df = data.copy()
+    
+    # If Bollinger columns don't exist, calculate them
+    if 'Bollinger_High' not in df.columns or 'Bollinger_Mid' not in df.columns or 'Bollinger_Low' not in df.columns:
+        # Calculate Bollinger Bands directly
+        window = 20
+        df['Bollinger_Mid'] = df['Close'].rolling(window=window).mean()
+        std_dev = df['Close'].rolling(window=window).std()
+        df['Bollinger_High'] = df['Bollinger_Mid'] + (std_dev * 2)
+        df['Bollinger_Low'] = df['Bollinger_Mid'] - (std_dev * 2)
+    
     # Add close price
     fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['Close'],
+        x=df.index,
+        y=df['Close'],
         mode='lines',
         name='Close Price',
         line=dict(color='blue', width=1.5)
@@ -944,39 +956,43 @@ def create_bollinger_chart(data):
     
     # Add Bollinger Bands
     fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['Bollinger_High'],
+        x=df.index,
+        y=df['Bollinger_High'],
         mode='lines',
         name='Upper Band',
         line=dict(color='red', width=1)
     ))
     
     fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['Bollinger_Mid'],
+        x=df.index,
+        y=df['Bollinger_Mid'],
         mode='lines',
-        name='Middle Band (SMA)',
+        name='Middle Band (SMA 20)',
         line=dict(color='orange', width=1)
     ))
     
     fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['Bollinger_Low'],
+        x=df.index,
+        y=df['Bollinger_Low'],
         mode='lines',
         name='Lower Band',
         line=dict(color='green', width=1)
     ))
     
     # Add fill between upper and lower bands
-    fig.add_trace(go.Scatter(
-        x=data.index.tolist() + data.index.tolist()[::-1],
-        y=data['Bollinger_High'].tolist() + data['Bollinger_Low'].tolist()[::-1],
-        fill='toself',
-        fillcolor='rgba(0, 176, 246, 0.1)',
-        line=dict(color='rgba(255, 255, 255, 0)'),
-        name='Bollinger Band Range',
-        showlegend=True
-    ))
+    try:
+        fig.add_trace(go.Scatter(
+            x=df.index.tolist() + df.index.tolist()[::-1],
+            y=df['Bollinger_High'].tolist() + df['Bollinger_Low'].tolist()[::-1],
+            fill='toself',
+            fillcolor='rgba(0, 176, 246, 0.1)',
+            line=dict(color='rgba(255, 255, 255, 0)'),
+            name='Bollinger Band Range',
+            showlegend=True
+        ))
+    except Exception as e:
+        # Skip the fill if there's an error
+        print(f"Error creating Bollinger Band fill: {e}")
     
     # Update layout
     fig.update_layout(
@@ -2089,35 +2105,12 @@ if submit_button:
                             - Bands narrowing can signal potential volatility increase
                             """)
                             
-                            # Add some debug information
                             try:
-                                # Check if Bollinger Band columns exist in the data
-                                bb_columns = ['Bollinger_High', 'Bollinger_Mid', 'Bollinger_Low']
-                                missing_columns = [col for col in bb_columns if col not in indicators_data.columns]
-                                
-                                if missing_columns:
-                                    st.error(f"Missing Bollinger Band columns: {', '.join(missing_columns)}")
-                                    # Check indicator calculation
-                                    st.info("Recalculating Bollinger Bands directly")
-                                    window = 20
-                                    # Calculate Bollinger Bands manually
-                                    indicators_data['SMA20'] = indicators_data['Close'].rolling(window=window).mean()
-                                    indicators_data['STD20'] = indicators_data['Close'].rolling(window=window).std()
-                                    indicators_data['Bollinger_High'] = indicators_data['SMA20'] + (indicators_data['STD20'] * 2)
-                                    indicators_data['Bollinger_Mid'] = indicators_data['SMA20']
-                                    indicators_data['Bollinger_Low'] = indicators_data['SMA20'] - (indicators_data['STD20'] * 2)
-                                
-                                # Check for NaN values
-                                na_counts = indicators_data[bb_columns].isna().sum()
-                                if na_counts.sum() > 0:
-                                    st.warning(f"NaN values detected in Bollinger Bands: {na_counts.to_dict()}")
-                                
+                                # The create_bollinger_chart function now handles missing columns
                                 fig_bb = create_bollinger_chart(indicators_data)
                                 st.plotly_chart(fig_bb, use_container_width=True)
                             except Exception as e:
-                                st.error(f"Error creating Bollinger Bands chart: {str(e)}")
-                                import traceback
-                                st.code(traceback.format_exc())
+                                st.error(f"Error displaying Bollinger Bands: {str(e)}")
                         
                         if "Stochastic Oscillator" in selected_indicators:
                             st.markdown("### Stochastic Oscillator")
