@@ -314,8 +314,13 @@ def get_stock_data(ticker_symbol, period='1y', max_retries=3):
     """Fetch stock data using yfinance with retry mechanism and fallback systems"""
     import time
     
-    # Clean up the ticker symbol
+    # Clean up the ticker symbol and validate
     ticker_symbol = ticker_symbol.strip().upper()
+    
+    # Check for invalid ticker symbols (with spaces or commas)
+    if ',' in ticker_symbol or ' ' in ticker_symbol:
+        st.error(f"Invalid ticker symbol: '{ticker_symbol}'. Symbols cannot contain spaces or commas.")
+        return None, None
     
     # Try to use the database first for recent data
     try:
