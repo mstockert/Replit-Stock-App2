@@ -547,6 +547,12 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
                 # Skip empty tickers
                 if not ticker:
                     continue
+                    
+                # Verify this is a single symbol without spaces
+                if ' ' in ticker:
+                    st.warning(f"Skipping invalid symbol: '{ticker}' (contains spaces)")
+                    failed_fetches += 1
+                    continue
                 
                 # Show progress
                 progress_text = f"Fetching data for {ticker} ({idx+1}/{len(ticker_symbols)})..."
@@ -773,23 +779,49 @@ def create_comparison_chart(stock_data_dict, time_period, normalize=False):
 
 # Function to format table data for display
 def format_table_data(hist_data):
-    """Format historical data for display in table"""
-    # Reset index to make Date a column
-    df = hist_data.reset_index()
-    
-    # Format Date column
-    df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
-    
-    # Round numeric columns to 2 decimal places
-    numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits']
-    for col in numeric_cols:
-        if col in df.columns:
-            if col == 'Volume':
-                df[col] = df[col].astype(int)
-            else:
-                df[col] = df[col].round(2)
-    
-    return df
+    """Format historical data for display in table with improved error handling"""
+    try:
+        # Check for empty or None data
+        if hist_data is None or hist_data.empty:
+            st.warning("No data available to format.")
+            # Return an empty DataFrame with expected columns
+            return pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits'])
+            
+        # Reset index to make Date a column
+        df = hist_data.reset_index()
+        
+        # Verify the Date column exists
+        if 'Date' not in df.columns:
+            st.warning("Date column not found in data. Using simplified format.")
+            # If no Date column, use the index as a date
+            df['Date'] = pd.date_range(end=datetime.now(), periods=len(df))
+        
+        # Format Date column if it's datetime type
+        if pd.api.types.is_datetime64_any_dtype(df['Date']):
+            df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')
+        
+        # Round numeric columns to 2 decimal places
+        numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits']
+        for col in numeric_cols:
+            if col in df.columns:
+                if col == 'Volume':
+                    try:
+                        df[col] = df[col].astype(int)
+                    except:
+                        # If can't convert to int, keep as is
+                        pass
+                else:
+                    try:
+                        df[col] = df[col].round(2)
+                    except:
+                        # If can't round, keep as is
+                        pass
+        
+        return df
+    except Exception as e:
+        st.error(f"Error formatting table data: {e}")
+        # Return empty DataFrame in case of any errors
+        return pd.DataFrame(columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits'])
 
 # Create the sidebar for inputs
 st.sidebar.header("Stock Parameters")
