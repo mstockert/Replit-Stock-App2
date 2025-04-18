@@ -1582,17 +1582,31 @@ if analysis_type == "Single Stock Analysis":
     # Submit button
     submit_button = st.sidebar.button("Get Stock Data")
     
-    # Show recent searches
+    # Show recent searches with better error handling
     st.sidebar.subheader("Recent Searches")
-    recent_searches = db.get_search_history(limit=5)
-    
-    if recent_searches:
-        for search in recent_searches:
-            if search['type'] == 'single':
-                if st.sidebar.button(f"📊 {search['query']}", key=f"recent_{search['id']}"):
-                    ticker = search['query']
-                    st.session_state['ticker'] = ticker
-                    submit_button = True
+    try:
+        # Check if the database function exists
+        if hasattr(db, 'get_search_history'):
+            try:
+                recent_searches = db.get_search_history(limit=5)
+                
+                if recent_searches:
+                    for search in recent_searches:
+                        if search['type'] == 'single':
+                            if st.sidebar.button(f"📊 {search['query']}", key=f"recent_{search['id']}"):
+                                ticker = search['query']
+                                st.session_state['ticker'] = ticker
+                                submit_button = True
+                else:
+                    st.sidebar.write("No recent searches")
+            except Exception as db_error:
+                st.sidebar.write("Unable to load search history")
+                print(f"Database error: {db_error}")
+        else:
+            st.sidebar.write("Search history not available")
+    except Exception as e:
+        st.sidebar.write("Error loading history feature")
+        print(f"Error in search history section: {e}")
     
     compare_stocks = False
     tickers = []
@@ -1689,52 +1703,66 @@ elif analysis_type == "Stock Comparison":
     # Submit button
     submit_button = st.sidebar.button("Compare Stocks")
     
-    # Show recent comparison searches
+    # Show recent comparison searches with better error handling
     st.sidebar.subheader("Recent Comparisons")
-    recent_searches = db.get_search_history(limit=5)
-    
-    if recent_searches:
-        for search in recent_searches:
-            if search['type'] == 'comparison' and ',' in search['query']:
-                if st.sidebar.button(f"🔄 {search['query']}", key=f"recent_{search['id']}"):
-                    tickers_input = search['query']
-                    
-                    # Use the same improved parsing logic for recent searches
-                    # First, detect if input is primarily space-separated or comma-separated
-                    if ',' in tickers_input:
-                        # Comma-separated format: First split by commas
-                        initial_parts = [part.strip() for part in tickers_input.split(',')]
-                    else:
-                        # Space-separated format: Split the whole input by spaces
-                        initial_parts = [part.strip() for part in tickers_input.split()]
-                    
-                    # Process each part to handle mixed formats
-                    tickers = []
-                    for part in initial_parts:
-                        if not part:  # Skip empty parts
-                            continue
-                            
-                        # If this part still has spaces and wasn't comma-separated, split further
-                        if ' ' in part and ',' not in tickers_input:
-                            # Split by space and add each as a ticker
-                            space_parts = [t.strip() for t in part.split() if t.strip()]
-                            tickers.extend(space_parts)
-                        else:
-                            # Single ticker (or already processed)
-                            tickers.append(part)
-                    
-                    # Final validation and cleanup
-                    cleaned_tickers = []
-                    for ticker in tickers:
-                        # Only include if it's not blank and doesn't contain spaces
-                        if ticker and ' ' not in ticker:
-                            cleaned_tickers.append(ticker.upper())
-                    
-                    # Remove duplicates
-                    tickers = list(set(cleaned_tickers))
-                    
-                    st.session_state['compare_symbols'] = tickers_input
-                    submit_button = True
+    try:
+        # Check if the database function exists
+        if hasattr(db, 'get_search_history'):
+            try:
+                recent_searches = db.get_search_history(limit=5)
+                
+                if recent_searches:
+                    for search in recent_searches:
+                        if search['type'] == 'comparison' and ',' in search['query']:
+                            if st.sidebar.button(f"🔄 {search['query']}", key=f"recent_{search['id']}"):
+                                tickers_input = search['query']
+                                
+                                # Use the same improved parsing logic for recent searches
+                                # First, detect if input is primarily space-separated or comma-separated
+                                if ',' in tickers_input:
+                                    # Comma-separated format: First split by commas
+                                    initial_parts = [part.strip() for part in tickers_input.split(',')]
+                                else:
+                                    # Space-separated format: Split the whole input by spaces
+                                    initial_parts = [part.strip() for part in tickers_input.split()]
+                                
+                                # Process each part to handle mixed formats
+                                tickers = []
+                                for part in initial_parts:
+                                    if not part:  # Skip empty parts
+                                        continue
+                                        
+                                    # If this part still has spaces and wasn't comma-separated, split further
+                                    if ' ' in part and ',' not in tickers_input:
+                                        # Split by space and add each as a ticker
+                                        space_parts = [t.strip() for t in part.split() if t.strip()]
+                                        tickers.extend(space_parts)
+                                    else:
+                                        # Single ticker (or already processed)
+                                        tickers.append(part)
+                                
+                                # Final validation and cleanup
+                                cleaned_tickers = []
+                                for ticker in tickers:
+                                    # Only include if it's not blank and doesn't contain spaces
+                                    if ticker and ' ' not in ticker:
+                                        cleaned_tickers.append(ticker.upper())
+                                
+                                # Remove duplicates
+                                tickers = list(set(cleaned_tickers))
+                                
+                                st.session_state['compare_symbols'] = tickers_input
+                                submit_button = True
+                else:
+                    st.sidebar.write("No recent comparisons")
+            except Exception as db_error:
+                st.sidebar.write("Unable to load comparison history")
+                print(f"Database error: {db_error}")
+        else:
+            st.sidebar.write("Comparison history not available")
+    except Exception as e:
+        st.sidebar.write("Error loading history feature")
+        print(f"Error in comparison history section: {e}")
     
     compare_stocks = True
     ticker = ""  # Not used in comparison mode
