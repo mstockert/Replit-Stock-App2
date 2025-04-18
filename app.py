@@ -1991,11 +1991,30 @@ if submit_button:
                     st.write(f"**Day Range:** ${metrics['Day Low']} - ${metrics['Day High']}" if isinstance(metrics['Day Low'], (int, float)) else f"**Day Range:** {metrics['Day Low']} - {metrics['Day High']}")
                     st.write(f"**52 Week Range:** ${metrics['52 Week Low']} - ${metrics['52 Week High']}" if isinstance(metrics['52 Week Low'], (int, float)) else f"**52 Week Range:** {metrics['52 Week Low']} - {metrics['52 Week High']}")
                 
+                # Add a guaranteed basic price chart that will always display
+                st.subheader("Stock Price")
+                basic_price_fig = go.Figure()
+                basic_price_fig.add_trace(go.Scatter(
+                    x=hist_data.index,
+                    y=hist_data['Close'],
+                    mode='lines',
+                    name='Close Price',
+                    line=dict(color='black', width=1.5)
+                ))
+                basic_price_fig.update_layout(
+                    title=f"{company_name} Stock Price ({selected_period})",
+                    xaxis_title='Date',
+                    yaxis_title='Price ($)',
+                    height=300,
+                    hovermode="x unified"
+                )
+                st.plotly_chart(basic_price_fig, use_container_width=True)
+                
                 # Create tabs for different views
-                tab1, tab2, tab3, tab4 = st.tabs(["Price Chart", "Technical Indicators", "Key Metrics", "Historical Data"])
+                tab1, tab2, tab3, tab4 = st.tabs(["Advanced Charts", "Technical Indicators", "Key Metrics", "Historical Data"])
                 
                 with tab1:
-                    # Create and display price chart
+                    # Create and display price chart with candlestick
                     fig = create_price_chart(hist_data, company_name, selected_period)
                     st.plotly_chart(fig, use_container_width=True)
                     
