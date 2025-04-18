@@ -15,6 +15,27 @@ import yfinance as yf
 # Import technical analysis indicators
 import ta
 
+# Initialize session state variables
+if 'ma_selections' not in st.session_state:
+    st.session_state.ma_selections = {
+        '5-Day': False,
+        '10-Day': False,
+        '20-Day': True,
+        '50-Day': True, 
+        '100-Day': False,
+        '200-Day': True
+    }
+
+if 'tech_indicators' not in st.session_state:
+    st.session_state.tech_indicators = {
+        'RSI': True,
+        'MACD': True,
+        'Bollinger': True,
+        'Stochastic': False,
+        'ADX': False,
+        'CCI': False
+    }
+
 # Aggressive monkey-patching to prevent any batch requests in yfinance
 # This will intercept any attempts to make batch requests and force single requests instead
 
@@ -1989,17 +2010,7 @@ if submit_button:
                     """)
                     
                     # Use a static approach - render the chart with all MAs pre-calculated
-                    # Just use session state to persist the selection
-                    # Initialize session state if needed
-                    if 'ma_selections' not in st.session_state:
-                        st.session_state.ma_selections = {
-                            '5-Day': False,
-                            '10-Day': False,
-                            '20-Day': True,
-                            '50-Day': True, 
-                            '100-Day': False,
-                            '200-Day': True
-                        }
+                    # Simply use the pre-defined session state
                         
                     # Create a more reliable grid of buttons
                     col1, col2, col3 = st.columns(3)
@@ -2186,19 +2197,9 @@ if submit_button:
                     # Calculate all indicators upfront
                     indicators_data = calculate_technical_indicators(hist_data)
                     
-                    # Initialize technical indicators session state if needed
-                    if 'tech_indicators' not in st.session_state:
-                        st.session_state.tech_indicators = {
-                            'RSI': True,
-                            'MACD': True,
-                            'Bollinger': True,
-                            'Stochastic': False,
-                            'ADX': False,
-                            'CCI': False
-                        }
+                    # Simply use the pre-defined session state from app initialization
                     
-                    # Calculate all indicators at once to avoid recalculation
-                    # Use direct calculations rather than function calls
+                    # Display the selected indicators
                     st.subheader("Selected Technical Indicators")
                     
                     # Display a master toggle button
