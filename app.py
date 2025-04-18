@@ -2002,65 +2002,26 @@ if submit_button:
                     # Simple moving average
                     st.subheader("Moving Averages")
                     
-                    # Static chart approach with pre-determined options
+                    # Use a completely different approach with multiselect which is more reliable
                     st.write("""
                     ### Moving Average Periods
-                    Select which Moving Averages to show in the static chart below. 
-                    (Showing multiple MAs provides better insight into trend direction)
+                    Select which Moving Averages to show in the chart below.
+                    (Multiple MAs provide better insight into trend direction)
                     """)
                     
-                    # Use a static approach - render the chart with all MAs pre-calculated
-                    # Simply use the pre-defined session state
-                        
-                    # Create a more reliable grid of buttons
-                    col1, col2, col3 = st.columns(3)
+                    # Define available MA periods
+                    all_ma_periods = ['5-Day', '10-Day', '20-Day', '50-Day', '100-Day', '200-Day']
                     
-                    # Create a toggle function that updates session state
-                    def toggle_ma(period):
-                        st.session_state.ma_selections[period] = not st.session_state.ma_selections[period]
+                    # Use the more reliable multiselect component instead of buttons
+                    # Default to showing some key MAs
+                    default_selections = ['20-Day', '50-Day', '200-Day']
+                    selected_ma_periods = st.multiselect(
+                        "Choose Moving Averages to display:",
+                        options=all_ma_periods,
+                        default=default_selections
+                    )
                     
-                    # Create the buttons
-                    with col1:
-                        if st.button('🔍 20-Day MA', 
-                                     help="Toggle 20-Day MA visibility",
-                                     type="primary" if st.session_state.ma_selections['20-Day'] else "secondary"):
-                            toggle_ma('20-Day')
-                            
-                        if st.button('🔍 50-Day MA', 
-                                     help="Toggle 50-Day MA visibility",
-                                     type="primary" if st.session_state.ma_selections['50-Day'] else "secondary"):
-                            toggle_ma('50-Day')
-                            
-                    with col2:
-                        if st.button('🔍 100-Day MA', 
-                                     help="Toggle 100-Day MA visibility",
-                                     type="primary" if st.session_state.ma_selections['100-Day'] else "secondary"):
-                            toggle_ma('100-Day')
-                            
-                        if st.button('🔍 200-Day MA', 
-                                     help="Toggle 200-Day MA visibility",
-                                     type="primary" if st.session_state.ma_selections['200-Day'] else "secondary"):
-                            toggle_ma('200-Day')
-                            
-                    with col3:
-                        if st.button('🔍 5-Day MA', 
-                                     help="Toggle 5-Day MA visibility",
-                                     type="primary" if st.session_state.ma_selections['5-Day'] else "secondary"):
-                            toggle_ma('5-Day')
-                            
-                        if st.button('🔍 10-Day MA', 
-                                     help="Toggle 10-Day MA visibility",
-                                     type="primary" if st.session_state.ma_selections['10-Day'] else "secondary"):
-                            toggle_ma('10-Day')
-                    
-                    # Show which MAs are currently selected
-                    selected_periods = [period for period, is_selected in st.session_state.ma_selections.items() if is_selected]
-                    if selected_periods:
-                        st.success(f"Showing: {', '.join(selected_periods)}")
-                    else:
-                        st.warning("No Moving Averages selected. Please select at least one.")
-                    
-                    # Calculate all MAs at once regardless of selection
+                    # Calculate all MAs at once
                     hist_data_ma = hist_data.copy()
                     hist_data_ma['MA5'] = hist_data_ma['Close'].rolling(window=5).mean()
                     hist_data_ma['MA10'] = hist_data_ma['Close'].rolling(window=10).mean()
@@ -2069,19 +2030,7 @@ if submit_button:
                     hist_data_ma['MA100'] = hist_data_ma['Close'].rolling(window=100).mean()
                     hist_data_ma['MA200'] = hist_data_ma['Close'].rolling(window=200).mean()
                     
-                    # Create a Plotly figure - static approach
-                    fig_ma = go.Figure()
-                    
-                    # Always add the price
-                    fig_ma.add_trace(go.Scatter(
-                        x=hist_data_ma.index,
-                        y=hist_data_ma['Close'],
-                        mode='lines',
-                        name='Close Price',
-                        line=dict(color='black', width=1.5)
-                    ))
-                    
-                    # Define a mapping for colors and other properties
+                    # Define color mapping for better visualization
                     ma_properties = {
                         '5-Day': {'column': 'MA5', 'color': '#FF9800', 'width': 1.5},
                         '10-Day': {'column': 'MA10', 'color': '#9C27B0', 'width': 1.5},
@@ -2091,9 +2040,21 @@ if submit_button:
                         '200-Day': {'column': 'MA200', 'color': '#2E55A5', 'width': 2.0}
                     }
                     
-                    # Add traces for each selected MA
-                    for period, is_selected in st.session_state.ma_selections.items():
-                        if is_selected:
+                    if selected_ma_periods:
+                        # Create Plotly figure for the price and Moving Averages
+                        fig_ma = go.Figure()
+                        
+                        # Add price trace
+                        fig_ma.add_trace(go.Scatter(
+                            x=hist_data_ma.index,
+                            y=hist_data_ma['Close'],
+                            mode='lines',
+                            name='Close Price',
+                            line=dict(color='black', width=1.5)
+                        ))
+                        
+                        # Add selected Moving Averages
+                        for period in selected_ma_periods:
                             props = ma_properties[period]
                             fig_ma.add_trace(go.Scatter(
                                 x=hist_data_ma.index,
@@ -2102,116 +2063,85 @@ if submit_button:
                                 name=f'{period} MA',
                                 line=dict(color=props['color'], width=props['width'])
                             ))
-                    
-                    # Layout 
-                    fig_ma.update_layout(
-                        title=f"{company_name} Price with Moving Averages",
-                        xaxis_title='Date',
-                        yaxis_title='Price ($)',
-                        height=600,
-                        legend=dict(
-                            orientation="h",
-                            yanchor="bottom",
-                            y=1.02,
-                            xanchor="right",
-                            x=1
+                        
+                        # Update layout
+                        fig_ma.update_layout(
+                            title=f"{company_name} Price with Selected Moving Averages",
+                            xaxis_title='Date',
+                            yaxis_title='Price ($)',
+                            height=600,
+                            legend=dict(
+                                orientation="h",
+                                yanchor="bottom",
+                                y=1.02,
+                                xanchor="right",
+                                x=1
+                            ),
+                            hovermode="x unified"
                         )
-                    )
+                        
+                        # Display the interactive chart
+                        st.plotly_chart(fig_ma, use_container_width=True)
                     
-                    # Show the chart
-                    st.plotly_chart(fig_ma, use_container_width=True)
-                    
-                    # Also add a simplified Streamlit chart as a backup
-                    st.subheader("Moving Averages (Simple Chart)")
-                    st.write("Alternative visualization with Streamlit's native chart:")
-                    
-                    # Prepare data for the simpler chart
-                    simple_data = pd.DataFrame({'Price': hist_data_ma['Close']})
-                    for period, is_selected in st.session_state.ma_selections.items():
-                        if is_selected:
+                        # Also create a simple Streamlit chart as backup
+                        st.subheader("Moving Averages (Simple Chart)")
+                        
+                        # Prepare data for Streamlit's native chart
+                        simple_data = pd.DataFrame({'Price': hist_data_ma['Close']})
+                        
+                        # Add each selected MA to the dataframe
+                        for period in selected_ma_periods:
                             props = ma_properties[period]
                             simple_data[f'{period} MA'] = hist_data_ma[props['column']]
-                            
-                    # Display the simpler chart
-                    st.line_chart(simple_data)
+                        
+                        # Display the simple chart
+                        st.line_chart(simple_data)
+                    else:
+                        st.warning("Please select at least one Moving Average period to display the chart.")
                 
                 with tab2:
                     st.subheader("Technical Indicators")
                     
-                    # Use buttons for more reliable state management instead of checkboxes
-                    st.write("### Toggle Technical Indicators")
+                    # Use multiselect for more reliable Technical Indicator selection
+                    st.subheader("Technical Indicators")
                     
-                    # Function to toggle indicator state
-                    def toggle_indicator(indicator_name):
-                        st.session_state.tech_indicators[indicator_name] = not st.session_state.tech_indicators[indicator_name]
+                    # Define all available indicators
+                    all_indicators = [
+                        'RSI (Relative Strength Index)',
+                        'MACD (Moving Average Convergence Divergence)',
+                        'Bollinger Bands',
+                        'Stochastic Oscillator',
+                        'ADX (Average Directional Index)',
+                        'CCI (Commodity Channel Index)'
+                    ]
                     
-                    # Create a 2x3 grid of buttons
-                    col1, col2, col3 = st.columns(3)
+                    # Map friendly names to internal names
+                    indicator_mapping = {
+                        'RSI (Relative Strength Index)': 'RSI',
+                        'MACD (Moving Average Convergence Divergence)': 'MACD',
+                        'Bollinger Bands': 'Bollinger',
+                        'Stochastic Oscillator': 'Stochastic',
+                        'ADX (Average Directional Index)': 'ADX',
+                        'CCI (Commodity Channel Index)': 'CCI'
+                    }
                     
-                    with col1:
-                        if st.button('📊 RSI', 
-                                    help="Toggle RSI indicator", 
-                                    type="primary" if st.session_state.tech_indicators['RSI'] else "secondary",
-                                    key="btn_rsi"):
-                            toggle_indicator('RSI')
-                        
-                        if st.button('📊 MACD', 
-                                    help="Toggle MACD indicator", 
-                                    type="primary" if st.session_state.tech_indicators['MACD'] else "secondary",
-                                    key="btn_macd"):
-                            toggle_indicator('MACD')
-                            
-                    with col2:
-                        if st.button('📊 Bollinger Bands', 
-                                    help="Toggle Bollinger Bands", 
-                                    type="primary" if st.session_state.tech_indicators['Bollinger'] else "secondary",
-                                    key="btn_bb"):
-                            toggle_indicator('Bollinger')
-                            
-                        if st.button('📊 Stochastic', 
-                                    help="Toggle Stochastic Oscillator", 
-                                    type="primary" if st.session_state.tech_indicators['Stochastic'] else "secondary",
-                                    key="btn_stoch"):
-                            toggle_indicator('Stochastic')
-                            
-                    with col3:
-                        if st.button('📊 ADX', 
-                                    help="Toggle ADX indicator", 
-                                    type="primary" if st.session_state.tech_indicators['ADX'] else "secondary",
-                                    key="btn_adx"):
-                            toggle_indicator('ADX')
-                            
-                        if st.button('📊 CCI', 
-                                    help="Toggle CCI indicator", 
-                                    type="primary" if st.session_state.tech_indicators['CCI'] else "secondary",
-                                    key="btn_cci"):
-                            toggle_indicator('CCI')
+                    # Default selections
+                    default_indicators = ['RSI (Relative Strength Index)', 'MACD (Moving Average Convergence Divergence)', 'Bollinger Bands']
                     
-                    # Show which indicators are active
-                    active_indicators = [name for name, is_active in st.session_state.tech_indicators.items() if is_active]
-                    if active_indicators:
-                        st.success(f"Active indicators: {', '.join(active_indicators)}")
-                    else:
-                        st.warning("No technical indicators selected. Please select at least one.")
+                    # Use multiselect for indicator selection
+                    selected_indicators = st.multiselect(
+                        "Select Technical Indicators to Display:",
+                        options=all_indicators,
+                        default=default_indicators,
+                        help="Choose which technical indicators to display below"
+                    )
                     
-                    # Calculate all indicators upfront
+                    # Calculate all indicators upfront (more efficient)
                     indicators_data = calculate_technical_indicators(hist_data)
                     
-                    # Simply use the pre-defined session state from app initialization
-                    
-                    # Display the selected indicators
-                    st.subheader("Selected Technical Indicators")
-                    
-                    # Display a master toggle button
-                    if st.button('Toggle All Indicators'):
-                        # Toggle all to the opposite of current majority
-                        current_state = sum(st.session_state.tech_indicators.values()) > 3
-                        for key in st.session_state.tech_indicators:
-                            st.session_state.tech_indicators[key] = not current_state
-                    
-                    # For each indicator, calculate and display regardless of checkbox
+                    # For each indicator, check if it's in the selected list and display accordingly
                     # RSI Indicator
-                    if st.session_state.tech_indicators['RSI']:
+                    if 'RSI (Relative Strength Index)' in selected_indicators:
                         st.markdown("### Relative Strength Index (RSI)")
                         st.markdown("""
                         RSI measures the magnitude of recent price changes to evaluate overbought or oversold conditions.
@@ -2259,7 +2189,7 @@ if submit_button:
                         st.plotly_chart(rsi_fig, use_container_width=True)
                     
                     # MACD Indicator
-                    if st.session_state.tech_indicators['MACD']:
+                    if 'MACD (Moving Average Convergence Divergence)' in selected_indicators:
                         st.markdown("### Moving Average Convergence Divergence (MACD)")
                         st.markdown("""
                         MACD is a trend-following momentum indicator that shows the relationship between two moving averages.
@@ -2330,7 +2260,7 @@ if submit_button:
                         st.plotly_chart(macd_fig, use_container_width=True)
                     
                     # Bollinger Bands
-                    if st.session_state.tech_indicators['Bollinger']:
+                    if 'Bollinger Bands' in selected_indicators:
                         st.markdown("### Bollinger Bands")
                         st.markdown("""
                         Bollinger Bands consist of a middle band (SMA) with two outer bands (standard deviations).
@@ -2445,7 +2375,7 @@ if submit_button:
                         st.plotly_chart(bb_fig, use_container_width=True)
                     
                     # Stochastic oscillator
-                    if st.session_state.tech_indicators['Stochastic']:
+                    if 'Stochastic Oscillator' in selected_indicators:
                         st.markdown("### Stochastic Oscillator")
                         st.markdown("""
                         The Stochastic Oscillator compares a stock's closing price to its price range over a period.
@@ -2518,7 +2448,7 @@ if submit_button:
                         st.plotly_chart(stoch_fig, use_container_width=True)
                     
                     # ADX (Average Directional Index)
-                    if st.session_state.tech_indicators['ADX']:
+                    if 'ADX (Average Directional Index)' in selected_indicators:
                         st.markdown("### Average Directional Index (ADX)")
                         st.markdown("""
                         ADX is used to determine the strength of a trend, regardless of its direction.
@@ -2572,7 +2502,7 @@ if submit_button:
                         st.plotly_chart(adx_fig, use_container_width=True)
                     
                     # CCI (Commodity Channel Index)
-                    if st.session_state.tech_indicators['CCI']:
+                    if 'CCI (Commodity Channel Index)' in selected_indicators:
                         st.markdown("### Commodity Channel Index (CCI)")
                         st.markdown("""
                         CCI measures the current price level relative to an average price level over a given period.
