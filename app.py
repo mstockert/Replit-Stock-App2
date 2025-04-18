@@ -1980,133 +1980,371 @@ if submit_button:
                     
                     # Simple moving average
                     st.subheader("Moving Averages")
-                    sma_options = [5, 10, 20, 50, 100, 200]
-                    selected_smas = st.multiselect("Add Simple Moving Averages (SMA)", sma_options, default=[20, 50, 200])
                     
-                    # Show all Moving Averages even if not selected
-                    # Calculate all possible SMAs first
+                    # Instead of multiselect, use individual checkboxes for better state management
+                    cols = st.columns(3)
+                    with cols[0]:
+                        show_ma20 = st.checkbox("20-Day MA", value=True, key="ma20_check")
+                        show_ma50 = st.checkbox("50-Day MA", value=True, key="ma50_check")
+                    with cols[1]:
+                        show_ma100 = st.checkbox("100-Day MA", value=False, key="ma100_check")
+                        show_ma200 = st.checkbox("200-Day MA", value=True, key="ma200_check")
+                    with cols[2]:
+                        show_ma5 = st.checkbox("5-Day MA", value=False, key="ma5_check")
+                        show_ma10 = st.checkbox("10-Day MA", value=False, key="ma10_check")
+                    
+                    # Calculate all SMAs at once
                     hist_data_sma = hist_data.copy()
+                    hist_data_sma['MA5'] = hist_data_sma['Close'].rolling(window=5).mean()
+                    hist_data_sma['MA10'] = hist_data_sma['Close'].rolling(window=10).mean()
+                    hist_data_sma['MA20'] = hist_data_sma['Close'].rolling(window=20).mean()
+                    hist_data_sma['MA50'] = hist_data_sma['Close'].rolling(window=50).mean()
+                    hist_data_sma['MA100'] = hist_data_sma['Close'].rolling(window=100).mean()
+                    hist_data_sma['MA200'] = hist_data_sma['Close'].rolling(window=200).mean()
+                    
+                    # Create color mapping
                     colors = {
-                        5: '#FF9800',    # Orange
-                        10: '#9C27B0',   # Purple
-                        20: '#17BECF',   # Light blue (cyan)
-                        50: '#B6267E',   # Pink/magenta
-                        100: '#2196F3',  # Blue
-                        200: '#2E55A5'   # Dark blue
+                        'MA5': '#FF9800',      # Orange
+                        'MA10': '#9C27B0',     # Purple
+                        'MA20': '#17BECF',     # Light blue (cyan)
+                        'MA50': '#B6267E',     # Pink/magenta
+                        'MA100': '#2196F3',    # Blue
+                        'MA200': '#2E55A5'     # Dark blue
                     }
                     
-                    # Create a dataframe with all SMAs
-                    for period in sma_options:
-                        hist_data_sma[f'SMA_{period}'] = hist_data_sma['Close'].rolling(window=period).mean()
+                    # Create figure
+                    fig_sma = go.Figure()
                     
-                    if selected_smas:
-                        st.write(f"Displaying SMAs for periods: {selected_smas}")
-                        
-                        # Always create a new figure when re-rendering
-                        fig_sma = go.Figure()
-                        
-                        # Add candlestick chart
-                        fig_sma.add_trace(go.Candlestick(
+                    # Add price trace - use line chart instead of candlestick for stability
+                    fig_sma.add_trace(go.Scatter(
+                        x=hist_data_sma.index,
+                        y=hist_data_sma['Close'],
+                        mode='lines',
+                        name='Close Price',
+                        line=dict(color='black', width=1.5)
+                    ))
+                    
+                    # Add the selected MAs
+                    if show_ma5:
+                        fig_sma.add_trace(go.Scatter(
                             x=hist_data_sma.index,
-                            open=hist_data_sma['Open'],
-                            high=hist_data_sma['High'],
-                            low=hist_data_sma['Low'],
-                            close=hist_data_sma['Close'],
-                            name='Price'
+                            y=hist_data_sma['MA5'],
+                            mode='lines',
+                            name='5-Day MA',
+                            line=dict(color=colors['MA5'], width=1.5)
                         ))
-                        
-                        # Add only the selected SMAs
-                        for period in selected_smas:
-                            line_width = 2.0 if period == 200 else 1.5
-                            
-                            fig_sma.add_trace(go.Scatter(
-                                x=hist_data_sma.index,
-                                y=hist_data_sma[f'SMA_{period}'],
-                                name=f'SMA {period}',
-                                line=dict(width=line_width, color=colors.get(period, '#FF0000'))
-                            ))
-                        
-                        # Update layout
-                        fig_sma.update_layout(
-                            title=f'{company_name} Stock Price with Moving Averages',
-                            xaxis_title='Date',
-                            yaxis_title='Price',
-                            height=600,
-                            xaxis_rangeslider_visible=False,
-                            legend=dict(
-                                orientation="h",
-                                yanchor="bottom",
-                                y=1.02,
-                                xanchor="right",
-                                x=1
-                            )
-                        )
-                        
-                        st.plotly_chart(fig_sma, use_container_width=True)
-                        
-                        # Also show the same data with Streamlit's native chart
-                        st.write("### Moving Averages (Streamlit Native Chart)")
-                        
-                        # Prepare data for line chart
-                        line_data = pd.DataFrame({'Close': hist_data_sma['Close']})
-                        for period in selected_smas:
-                            line_data[f'SMA {period}'] = hist_data_sma[f'SMA_{period}']
-                            
-                        st.line_chart(line_data)
+                    
+                    if show_ma10:
+                        fig_sma.add_trace(go.Scatter(
+                            x=hist_data_sma.index,
+                            y=hist_data_sma['MA10'],
+                            mode='lines',
+                            name='10-Day MA',
+                            line=dict(color=colors['MA10'], width=1.5)
+                        ))
+                    
+                    if show_ma20:
+                        fig_sma.add_trace(go.Scatter(
+                            x=hist_data_sma.index,
+                            y=hist_data_sma['MA20'],
+                            mode='lines',
+                            name='20-Day MA',
+                            line=dict(color=colors['MA20'], width=1.5)
+                        ))
+                    
+                    if show_ma50:
+                        fig_sma.add_trace(go.Scatter(
+                            x=hist_data_sma.index,
+                            y=hist_data_sma['MA50'],
+                            mode='lines',
+                            name='50-Day MA',
+                            line=dict(color=colors['MA50'], width=1.5)
+                        ))
+                    
+                    if show_ma100:
+                        fig_sma.add_trace(go.Scatter(
+                            x=hist_data_sma.index,
+                            y=hist_data_sma['MA100'],
+                            mode='lines',
+                            name='100-Day MA',
+                            line=dict(color=colors['MA100'], width=1.5)
+                        ))
+                    
+                    if show_ma200:
+                        fig_sma.add_trace(go.Scatter(
+                            x=hist_data_sma.index,
+                            y=hist_data_sma['MA200'],
+                            mode='lines',
+                            name='200-Day MA',
+                            line=dict(color=colors['MA200'], width=2.0)
+                        ))
+                    
+                    # Update layout
+                    fig_sma.update_layout(
+                        title=f'{company_name} Price with Moving Averages',
+                        xaxis_title='Date',
+                        yaxis_title='Price ($)',
+                        height=600,
+                        legend=dict(
+                            orientation="h",
+                            yanchor="bottom",
+                            y=1.02,
+                            xanchor="right",
+                            x=1
+                        ),
+                        hovermode="x unified"
+                    )
+                    
+                    # Display Plotly chart
+                    st.plotly_chart(fig_sma, use_container_width=True)
                 
                 with tab2:
-                    st.subheader("Technical Indicators - Simplified")
+                    st.subheader("Technical Indicators")
                     
-                    # Simplified Technical Indicators tab - just Bollinger Bands
-                    st.write("This is a simplified version to debug the Bollinger Bands issue.")
+                    # Use checkboxes instead of multiselect for more reliable state management
+                    st.write("Select Technical Indicators to Display:")
                     
-                    st.markdown("### Bollinger Bands")
-                    st.markdown("""
-                    Bollinger Bands consist of a middle band (SMA) with two outer bands (standard deviations).
-                    - Price reaching the upper band may indicate overbought conditions
-                    - Price reaching the lower band may indicate oversold conditions
-                    - Bands narrowing can signal potential volatility increase
-                    """)
+                    # Create a 2x3 grid of checkboxes
+                    col1, col2, col3 = st.columns(3)
                     
-                    st.info(f"Using dataset shape: {hist_data.shape}")
-                    st.info(f"Date range: {hist_data.index[0]} to {hist_data.index[-1]}")
+                    with col1:
+                        show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True, key="rsi_check")
+                        show_macd = st.checkbox("MACD", value=True, key="macd_check")
                     
-                    # Display a few rows of the dataframe
-                    st.write("Sample of stock data:")
-                    st.write(hist_data.tail(3))
+                    with col2:
+                        show_bollinger = st.checkbox("Bollinger Bands", value=True, key="bollinger_check")
+                        show_stochastic = st.checkbox("Stochastic Oscillator", value=False, key="stochastic_check")
                     
-                    # Try with the built-in Streamlit chart first
-                    try:
-                        st.subheader("Simple Price Chart with Streamlit")
-                        st.line_chart(hist_data['Close'])
+                    with col3:
+                        show_adx = st.checkbox("ADX", value=False, key="adx_check")
+                        show_cci = st.checkbox("CCI", value=False, key="cci_check")
+                    
+                    # Calculate all indicators upfront
+                    indicators_data = calculate_technical_indicators(hist_data)
+                    
+                    # Display selected indicators
+                    if show_rsi:
+                        st.markdown("### Relative Strength Index (RSI)")
+                        st.markdown("""
+                        RSI measures the magnitude of recent price changes to evaluate overbought or oversold conditions.
+                        - Values above 70 generally indicate overbought conditions (potential sell signal)
+                        - Values below 30 generally indicate oversold conditions (potential buy signal)
+                        - The centerline at 50 can indicate the trend direction
+                        """)
                         
-                        # Calculate Bollinger Bands directly
+                        # Create RSI chart - either using function or direct approach
+                        try:
+                            rsi_fig = create_rsi_chart(indicators_data)
+                            st.plotly_chart(rsi_fig, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error displaying RSI chart: {str(e)}")
+                            # Alternative direct calculation
+                            try:
+                                # Calculate RSI directly
+                                rsi_data = pd.DataFrame({
+                                    'RSI': indicators_data['RSI_14'] if 'RSI_14' in indicators_data.columns else 
+                                          ta.momentum.rsi(hist_data['Close'], window=14)
+                                })
+                                
+                                # Display with Streamlit chart
+                                st.subheader("RSI Chart (Simple)")
+                                st.line_chart(rsi_data)
+                            except:
+                                st.error("Could not create alternative RSI chart")
+                    
+                    if show_macd:
+                        st.markdown("### Moving Average Convergence Divergence (MACD)")
+                        st.markdown("""
+                        MACD is a trend-following momentum indicator that shows the relationship between two moving averages.
+                        - When MACD crosses above the signal line, it's a potential buy signal
+                        - When MACD crosses below the signal line, it's a potential sell signal
+                        - The histogram shows the difference between MACD and signal line
+                        """)
+                        
+                        try:
+                            macd_fig = create_macd_chart(indicators_data)
+                            st.plotly_chart(macd_fig, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error displaying MACD chart: {str(e)}")
+                            # Simple alternative
+                            try:
+                                # Direct calculation
+                                macd = ta.trend.macd(hist_data['Close'])
+                                macd_signal = ta.trend.macd_signal(hist_data['Close'])
+                                macd_hist = ta.trend.macd_diff(hist_data['Close'])
+                                
+                                macd_data = pd.DataFrame({
+                                    'MACD': macd,
+                                    'Signal': macd_signal,
+                                    'Histogram': macd_hist
+                                })
+                                
+                                st.subheader("MACD Chart (Simple)")
+                                st.line_chart(macd_data[['MACD', 'Signal']])
+                            except:
+                                st.error("Could not create alternative MACD chart")
+                    
+                    if show_bollinger:
+                        st.markdown("### Bollinger Bands")
+                        st.markdown("""
+                        Bollinger Bands consist of a middle band (SMA) with two outer bands (standard deviations).
+                        - Price reaching the upper band may indicate overbought conditions
+                        - Price reaching the lower band may indicate oversold conditions
+                        - Bands narrowing can signal potential volatility increase
+                        """)
+                        
+                        # Direct calculation for Bollinger Bands
                         window = 20
-                        sma = hist_data['Close'].rolling(window=window).mean()
-                        std = hist_data['Close'].rolling(window=window).std()
-                        upper = sma + (std * 2)
-                        lower = sma - (std * 2)
+                        bb_sma = hist_data['Close'].rolling(window=window).mean()
+                        bb_std = hist_data['Close'].rolling(window=window).std()
+                        bb_upper = bb_sma + (bb_std * 2)
+                        bb_lower = bb_sma - (bb_std * 2)
                         
-                        # Create a basic dataframe with calculated values
+                        # Create a DataFrame for display
                         bb_data = pd.DataFrame({
-                            'Close': hist_data['Close'],
-                            'SMA20': sma,
-                            'Upper': upper, 
-                            'Lower': lower
+                            'Price': hist_data['Close'],
+                            'SMA': bb_sma,
+                            'Upper': bb_upper,
+                            'Lower': bb_lower
                         })
                         
-                        # Show sample calculations to verify
-                        st.write("Bollinger Bands calculations (last 5 rows):")
-                        st.write(bb_data.tail(5))
-                        
-                        # Chart with built-in Streamlit chart
-                        st.subheader("Bollinger Bands with Streamlit Chart")
+                        # First show a simple chart
+                        st.subheader("Bollinger Bands (Streamlit Chart)")
                         st.line_chart(bb_data)
                         
-                    except Exception as e:
-                        st.error(f"Error creating Streamlit charts: {str(e)}")
-                        import traceback
-                        st.code(traceback.format_exc())
+                        # Also try with Plotly
+                        try:
+                            bb_fig = go.Figure()
+                            
+                            # Add price line
+                            bb_fig.add_trace(go.Scatter(
+                                x=hist_data.index,
+                                y=hist_data['Close'],
+                                mode='lines',
+                                name='Close Price',
+                                line=dict(color='blue', width=1.5)
+                            ))
+                            
+                            # Add bands
+                            bb_fig.add_trace(go.Scatter(
+                                x=hist_data.index,
+                                y=bb_upper,
+                                mode='lines',
+                                name='Upper Band',
+                                line=dict(color='red', width=1)
+                            ))
+                            
+                            bb_fig.add_trace(go.Scatter(
+                                x=hist_data.index,
+                                y=bb_sma,
+                                mode='lines',
+                                name='SMA (20)',
+                                line=dict(color='green', width=1)
+                            ))
+                            
+                            bb_fig.add_trace(go.Scatter(
+                                x=hist_data.index,
+                                y=bb_lower,
+                                mode='lines',
+                                name='Lower Band',
+                                line=dict(color='red', width=1)
+                            ))
+                            
+                            bb_fig.update_layout(
+                                title='Bollinger Bands',
+                                xaxis_title='Date',
+                                yaxis_title='Price',
+                                height=400
+                            )
+                            
+                            st.subheader("Bollinger Bands (Plotly Chart)")
+                            st.plotly_chart(bb_fig, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error creating Plotly Bollinger Bands chart: {str(e)}")
+                    
+                    if show_stochastic:
+                        st.markdown("### Stochastic Oscillator")
+                        st.markdown("""
+                        The Stochastic Oscillator compares a stock's closing price to its price range over a period.
+                        - Values above 80 indicate overbought conditions
+                        - Values below 20 indicate oversold conditions
+                        - %K line crossing above %D line is a potential buy signal
+                        - %K line crossing below %D line is a potential sell signal
+                        """)
+                        
+                        try:
+                            stoch_fig = create_stochastic_chart(indicators_data)
+                            st.plotly_chart(stoch_fig, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error displaying Stochastic chart: {str(e)}")
+                            # Alternative
+                            try:
+                                stoch_k = ta.momentum.stoch(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
+                                stoch_d = ta.momentum.stoch_signal(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
+                                
+                                stoch_data = pd.DataFrame({
+                                    '%K': stoch_k,
+                                    '%D': stoch_d
+                                })
+                                
+                                st.subheader("Stochastic Oscillator (Simple)")
+                                st.line_chart(stoch_data)
+                            except:
+                                st.error("Could not create alternative Stochastic chart")
+                    
+                    if show_adx:
+                        st.markdown("### Average Directional Index (ADX)")
+                        st.markdown("""
+                        ADX is used to determine the strength of a trend, regardless of its direction.
+                        - Values above 25 indicate a strong trend
+                        - Values below 20 indicate a weak or non-existent trend
+                        - ADX does not show trend direction, only strength
+                        """)
+                        
+                        try:
+                            adx_fig = create_adx_chart(indicators_data)
+                            st.plotly_chart(adx_fig, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error displaying ADX chart: {str(e)}")
+                            # Alternative
+                            try:
+                                adx = ta.trend.adx(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
+                                
+                                adx_data = pd.DataFrame({
+                                    'ADX': adx
+                                })
+                                
+                                st.subheader("ADX (Simple)")
+                                st.line_chart(adx_data)
+                            except:
+                                st.error("Could not create alternative ADX chart")
+                    
+                    if show_cci:
+                        st.markdown("### Commodity Channel Index (CCI)")
+                        st.markdown("""
+                        CCI measures the current price level relative to an average price level over a given period.
+                        - Values above +100 suggest an overbought condition
+                        - Values below -100 suggest an oversold condition
+                        - CCI can be used to identify new trends or extreme conditions
+                        """)
+                        
+                        try:
+                            cci_fig = create_cci_chart(indicators_data)
+                            st.plotly_chart(cci_fig, use_container_width=True)
+                        except Exception as e:
+                            st.error(f"Error displaying CCI chart: {str(e)}")
+                            # Alternative
+                            try:
+                                cci = ta.trend.cci(high=hist_data['High'], low=hist_data['Low'], close=hist_data['Close'])
+                                
+                                cci_data = pd.DataFrame({
+                                    'CCI': cci
+                                })
+                                
+                                st.subheader("CCI (Simple)")
+                                st.line_chart(cci_data)
+                            except:
+                                st.error("Could not create alternative CCI chart")
                             
 
                 
