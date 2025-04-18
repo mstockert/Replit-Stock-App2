@@ -1965,7 +1965,7 @@ if submit_button:
                     # Simple moving average
                     st.subheader("Moving Averages")
                     sma_options = [5, 10, 20, 50, 100, 200]
-                    selected_smas = st.multiselect("Add Simple Moving Averages (SMA)", sma_options, default=[20, 50])
+                    selected_smas = st.multiselect("Add Simple Moving Averages (SMA)", sma_options, default=[20, 50, 200])
                     
                     if selected_smas:
                         # Calculate selected SMAs
@@ -1981,14 +1981,25 @@ if submit_button:
                             name='Price'
                         ))
                         
-                        # Add SMAs
+                        # Add SMAs with consistent colors
+                        colors = {
+                            5: '#FF9800',    # Orange
+                            10: '#9C27B0',   # Purple
+                            20: '#17BECF',   # Light blue (cyan)
+                            50: '#B6267E',   # Pink/magenta
+                            100: '#2196F3',  # Blue
+                            200: '#2E55A5'   # Dark blue
+                        }
+                        
                         for period in selected_smas:
                             sma = hist_data['Close'].rolling(window=period).mean()
+                            line_width = 2.0 if period == 200 else 1.5
+                            
                             fig_sma.add_trace(go.Scatter(
                                 x=hist_data.index,
                                 y=sma,
                                 name=f'SMA {period}',
-                                line=dict(width=1.5)
+                                line=dict(width=line_width, color=colors.get(period, None))
                             ))
                         
                         # Update layout
@@ -2028,7 +2039,6 @@ if submit_button:
                             show_rsi = st.checkbox("RSI (Relative Strength Index)", value=True)
                             show_macd = st.checkbox("MACD", value=True)
                             show_bollinger = st.checkbox("Bollinger Bands")
-                            show_ma200 = st.checkbox("200-day Moving Average")
                         
                         with col2:
                             show_stochastic = st.checkbox("Stochastic Oscillator")
@@ -2043,7 +2053,6 @@ if submit_button:
                         if show_stochastic: selected_indicators.append("Stochastic Oscillator")
                         if show_adx: selected_indicators.append("ADX")
                         if show_cci: selected_indicators.append("CCI")
-                        if show_ma200: selected_indicators.append("MA200")
                         
                         # Add a status message about selected indicators
                         if selected_indicators:
@@ -2116,19 +2125,7 @@ if submit_button:
                             fig_cci = create_cci_chart(indicators_data)
                             st.plotly_chart(fig_cci, use_container_width=True)
                             
-                        if "MA200" in selected_indicators:
-                            st.markdown("### Moving Averages (20, 50, and 200-day)")
-                            st.markdown("""
-                            Moving Averages help identify trends at different time frames:
-                            - 20-day MA (orange): Short-term trend indicator
-                            - 50-day MA (purple): Medium-term trend indicator
-                            - 200-day MA (blue): Long-term trend indicator
-                            
-                            When shorter MAs cross above longer MAs, it may signal bullish momentum.
-                            When shorter MAs cross below longer MAs, it may signal bearish momentum.
-                            """)
-                            fig_ma200 = create_ma200_chart(indicators_data)
-                            st.plotly_chart(fig_ma200, use_container_width=True)
+
                 
                 with tab3:
                     st.subheader("Key Financial Metrics")
