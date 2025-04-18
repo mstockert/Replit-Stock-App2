@@ -2101,40 +2101,46 @@ if submit_button:
                         '200-Day': {'column': 'MA200', 'color': '#2E55A5', 'width': 2.0}
                     }
                     
-                    # Create two separate charts:
-                    # 1. A basic price chart that never changes
-                    base_fig = go.Figure()
-                    base_fig.add_trace(go.Scatter(
-                        x=hist_data_ma.index,
-                        y=hist_data_ma['Close'],
+                    # ALWAYS show a price chart regardless of selections
+                    st.subheader("Stock Price Chart")
+                    
+                    # Create a guaranteed base price chart
+                    price_only_fig = go.Figure()
+                    price_only_fig.add_trace(go.Scatter(
+                        x=hist_data.index,
+                        y=hist_data['Close'],
                         mode='lines',
                         name='Close Price',
                         line=dict(color='black', width=1.5)
                     ))
-                    base_fig.update_layout(
-                        title=f"{company_name} Price Chart",
+                    price_only_fig.update_layout(
+                        title=f"{company_name} Stock Price",
                         xaxis_title='Date',
                         yaxis_title='Price ($)',
-                        height=350,
+                        height=400,
                         hovermode="x unified"
                     )
-                    st.plotly_chart(base_fig, use_container_width=True)
+                    st.plotly_chart(price_only_fig, use_container_width=True)
                     
-                    # 2. MA chart only if some MAs are selected
-                    if selected_ma_periods:
-                        # Create separate MA figure
+                    # Separate section for Moving Averages
+                    st.subheader("Moving Averages Chart") 
+                    
+                    if not selected_ma_periods:
+                        st.info("Select one or more Moving Average periods above to display them with the price chart.")
+                    else:
+                        # Create a new figure for moving averages
                         ma_fig = go.Figure()
                         
-                        # Add price trace
+                        # Always add the price
                         ma_fig.add_trace(go.Scatter(
                             x=hist_data_ma.index,
                             y=hist_data_ma['Close'],
                             mode='lines',
-                            name='Close Price',
+                            name='Price',
                             line=dict(color='black', width=1.5)
                         ))
                         
-                        # Add selected Moving Averages
+                        # Add each selected MA
                         for period in selected_ma_periods:
                             props = ma_properties[period]
                             ma_fig.add_trace(go.Scatter(
@@ -2145,12 +2151,12 @@ if submit_button:
                                 line=dict(color=props['color'], width=props['width'])
                             ))
                         
-                        # Update layout
+                        # Layout for MA chart
                         ma_fig.update_layout(
-                            title=f"{company_name} Price with Moving Averages",
+                            title=f"{company_name} with {', '.join(selected_ma_periods)} Moving Averages",
                             xaxis_title='Date',
                             yaxis_title='Price ($)',
-                            height=500,
+                            height=450,
                             legend=dict(
                                 orientation="h",
                                 yanchor="bottom",
@@ -2161,10 +2167,8 @@ if submit_button:
                             hovermode="x unified"
                         )
                         
-                        # Display the chart
+                        # Display the MA chart
                         st.plotly_chart(ma_fig, use_container_width=True)
-                    else:
-                        st.info("Select one or more Moving Average periods above to display them on the chart")
                     
                     # Create a simple Streamlit chart as backup only if some MAs are selected
                     if selected_ma_periods:
