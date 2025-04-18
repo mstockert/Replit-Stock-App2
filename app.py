@@ -490,14 +490,19 @@ def get_multiple_stocks_data(ticker_symbols, period='1y'):
     """Fetch data for multiple stock symbols one at a time with fallback mechanisms"""
     import time
     
+    # Debug the input to the function
+    st.write(f"Debug - get_multiple_stocks_data received: {ticker_symbols} (type: {type(ticker_symbols).__name__})")
+    
     all_data = {}
     all_info = {}
     
-    # Improved ticker symbol parsing
+    # Handle the case where the entire tickers_input string is passed instead of the parsed list
     # First, handle if ticker_symbols is a string instead of a list
     if isinstance(ticker_symbols, str):
+        st.warning("Received a string of tickers instead of a list. Parsing now...")
         # Split by commas and clean up
         ticker_symbols = [t.strip() for t in ticker_symbols.split(",") if t.strip()]
+        st.write(f"Parsed into individual tickers: {ticker_symbols}")
     
     # Process the list to handle any nested comma-separated strings
     cleaned_tickers = []
@@ -1068,7 +1073,11 @@ if submit_button:
         if len(tickers) < 2:
             st.error("Please enter at least two stock symbols for comparison.")
         else:
-            # Get data for multiple stocks
+            # This is critical - we need to make sure we're splitting the input string
+            # Debug the actual tickers list that will be used
+            st.write(f"Debug: Tickers to compare: {tickers}")
+            
+            # Get data for multiple stocks (pass list of individual symbols, not combined string)
             all_stock_data, all_stock_info = get_multiple_stocks_data(tickers, period)
             
             if all_stock_data and all_stock_info:
