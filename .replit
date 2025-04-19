@@ -2,6 +2,7 @@ modules = ["python-3.11"]
 
 [nix]
 channel = "stable-24_05"
+packages = ["glibcLocales"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -17,10 +18,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "StockAppServer"
+args = "SimpleChart"
 
 [[workflows.workflow]]
-name = "StockAppServer"
+name = "SimpleChart"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -31,7 +32,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "streamlit run app.py --server.port 5000"
+args = "streamlit run simple_chart.py --server.port 5000"
 waitForPort = 5000
 
 [[ports]]
