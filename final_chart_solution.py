@@ -14,8 +14,8 @@ st.write("A reliable approach to visualizing stock data with moving averages")
 with st.sidebar:
     st.header("Stock Selection")
     
-    # Stock symbol input
-    ticker = st.text_input("Enter Stock Symbol", "AAPL").upper()
+    # Stock symbol input with key for state persistence
+    ticker = st.text_input("Enter Stock Symbol", "AAPL", key="ticker_input").upper()
     
     # Period selection
     period_options = {
@@ -30,11 +30,12 @@ with st.sidebar:
     
     period_label = st.selectbox("Select Time Period", 
                                 options=list(period_options.keys()),
-                                index=3)  # Default to 1 Year
+                                index=3,  # Default to 1 Year
+                                key="period_selection")
     period = period_options[period_label]
     
-    # Get data button
-    fetch_data = st.button("Fetch Stock Data", use_container_width=True)
+    # Get data button with a key to maintain state
+    fetch_data = st.button("Fetch Stock Data", use_container_width=True, key="fetch_data_button")
 
 # Function to get stock data
 @st.cache_data(ttl=3600)  # Cache for one hour
@@ -117,11 +118,13 @@ if fetch_data:
         with tab2:
             st.subheader("Moving Average Analysis")
             
-            # Select which MAs to display
+            # Select which MAs to display - use key to maintain state
+            # Adding a key prevents the selector from reverting to default on interaction
             ma_options = st.multiselect(
                 "Select Moving Averages to Display",
                 options=["20-Day MA", "50-Day MA", "100-Day MA", "200-Day MA"],
-                default=["20-Day MA", "50-Day MA"]
+                default=["20-Day MA", "50-Day MA"],
+                key="ma_selection"  # Adding a key helps Streamlit maintain state
             )
             
             # Create dataframe for display
