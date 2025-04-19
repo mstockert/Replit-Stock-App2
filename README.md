@@ -1,112 +1,76 @@
-# Stock Market Dashboard
+# Stock Data Visualizer
 
-A Streamlit-based stock data visualization platform that provides comprehensive financial insights through interactive and user-friendly interfaces.
+A comprehensive Streamlit-based stock analysis platform that offers advanced financial insights through interactive visualization and technical analysis tools.
+
+![Stock Data Visualizer](generated-icon.png)
 
 ## Features
 
-- Stock data visualization with interactive charts
-- Multi-stock comparison with correlation analysis
-- One-click example comparisons for common stock groupings
-- Stock price history tables and trend visualization
-- Watchlist management for tracking favorite stocks
-- Data export functionality (CSV)
-- Database storage for persistent data
-- Robust error handling and database connectivity fallbacks
-- Timezone consistency handling for mixed data sources
+- **Real-time Stock Data**: Fetch current and historical stock data from Yahoo Finance
+- **Multi-stock Comparison**: Compare performance of multiple stocks simultaneously
+- **Interactive Charts**: View stock price history with multiple visualization options
+- **Technical Indicators**:
+  - Multiple Moving Averages (20, 50, 100, 200-day)
+  - Bollinger Bands (20-day with 2 standard deviations)
+- **Data Analysis**: Export stock data to CSV for further analysis
+- **User-friendly Interface**: Clean, organized layout with tabs for different analyses
+- **State Persistence**: Maintains application state during interaction using Streamlit's session state
+- **Performance Normalization**: Option to normalize stock prices for better comparison of relative performance
 
-## Technology Stack
+## How to Use
 
-- **Frontend**: Streamlit
-- **Data Source**: Yahoo Finance API (yfinance)
-- **Visualization**: Plotly
-- **Database**: PostgreSQL with SQLAlchemy ORM
-- **Data Processing**: Pandas, NumPy
+### Single Stock Analysis
+1. Enter a stock symbol in the sidebar (e.g., AAPL, MSFT, GOOGL)
+2. Select a time period (1 month to max)
+3. Click "Fetch Stock Data"
+4. Navigate between different tabs to explore various analyses:
+   - **Price Charts**: View basic price history and recent price details
+   - **Moving Averages**: Select different moving averages to display
+   - **Bollinger Bands**: Analyze price volatility and potential reversal points
+   - **Data Table**: View and download the raw stock data
 
-## Installation
+### Multi-Stock Comparison
+1. Enable "Stock Comparison" in the sidebar
+2. Enter multiple stock symbols separated by commas (e.g., AAPL,MSFT,GOOGL)
+3. Choose whether to normalize prices for better relative performance comparison
+4. Click "Compare Stocks"
+5. Navigate to the "Comparison" tab to view the multi-stock chart
 
-1. Clone this repository:
-   ```
-   git clone https://github.com/mstockert/Replit-Stock-App2.git
-   cd Replit-Stock-App2
-   ```
+## Technical Analysis Guides
 
-2. Set up a virtual environment (recommended):
-   ```bash
-   # On macOS/Linux
-   python -m venv venv
-   source venv/bin/activate
+### Moving Averages
+- When price crosses above a moving average: Potential bullish signal
+- When price crosses below a moving average: Potential bearish signal
+- When shorter-term MA crosses above longer-term MA: Golden Cross (bullish)
+- When shorter-term MA crosses below longer-term MA: Death Cross (bearish)
+- Multiple MAs pointing in same direction: Strong trend confirmation
 
-   # On Windows
-   python -m venv venv
-   venv\Scripts\activate
-   ```
+### Bollinger Bands
+- **Middle Band**: 20-day simple moving average (SMA)
+- **Upper Band**: SMA + (2 × 20-day standard deviation)
+- **Lower Band**: SMA - (2 × 20-day standard deviation)
 
-3. Install required packages:
-   ```
-   pip install -r requirements.txt
-   ```
+**Trading Signals:**
+- Price touching the upper band may indicate overbought conditions
+- Price touching the lower band may indicate oversold conditions
+- Bands narrowing suggest consolidation (low volatility)
+- Bands widening suggest increased volatility
+- Price breaking out after band contraction often signals a significant move
 
-   If requirements.txt is missing, install these packages:
-   ```
-   pip install streamlit pandas numpy plotly yfinance sqlalchemy psycopg2-binary
-   ```
+## Technical Stack
 
-4. Set up PostgreSQL database:
-   
-   **Option 1: Using PostgreSQL**
-   - Install PostgreSQL if not already installed
-   - Create a database for the application
-   - Set environment variable: `DATABASE_URL="postgresql://user:password@host/dbname"`
-   
-   On macOS with Homebrew:
-   ```bash
-   brew install postgresql
-   brew services start postgresql
-   createdb stockapp
-   export DATABASE_URL="postgresql://localhost:5432/stockapp"
-   ```
+- **Streamlit**: Framework for interactive web application
+- **yfinance**: Yahoo Finance data integration
+- **pandas**: Data manipulation and analysis
+- **matplotlib/plotly**: Visualization libraries
 
-   **Option 2: Using SQLite (fallback)**
-   - The application will automatically use an in-memory SQLite database if PostgreSQL is not available
+## Development Notes
 
-## Usage
+This application has gone through several iterations to address display issues with charts and state management. The current implementation uses:
 
-1. Start the Streamlit application:
-   ```
-   streamlit run app.py
-   ```
+- Streamlit's native chart components for reliable display
+- Session state to maintain application state
+- Keys for all interactive components to ensure state persistence
+- Proper error handling for data retrieval and processing
 
-2. Open your browser to http://localhost:8501
-
-3. Enter stock symbols (e.g., AAPL, MSFT, GOOG) to visualize data
-
-4. Create watchlists to track your favorite stocks
-
-## Project Structure
-
-- `app.py`: Main Streamlit application with UI components and data visualization
-- `database.py`: Database models and functions for data persistence
-- `db_ui.py`: UI components for database operations (watchlists, search history)
-- `.streamlit/config.toml`: Streamlit configuration
-
-## Error Handling
-
-The application includes robust error handling for:
-- Database connection issues
-- API failures
-- Invalid stock symbols
-- Data retrieval errors
-- Timezone inconsistencies between data sources
-
-## Recent Improvements
-
-### Stock Comparison Enhancement (April 2025)
-- Fixed parsing and validation of multiple stock symbols
-- Added one-click example buttons for quick comparisons
-- Improved user interface with clearer instructions
-- Fixed timezone inconsistency issues when combining data
-- Enhanced error handling and debugging information
-
-## License
-
-This project is for personal use only.
+Last updated: April 19, 2025

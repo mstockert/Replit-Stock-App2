@@ -14,6 +14,12 @@ if 'last_update' not in st.session_state:
     st.session_state['last_update'] = None
 if 'ma_selection' not in st.session_state:
     st.session_state['ma_selection'] = ["20-Day MA", "50-Day MA"]
+if 'comparison_mode' not in st.session_state:
+    st.session_state['comparison_mode'] = False
+if 'comparison_tickers' not in st.session_state:
+    st.session_state['comparison_tickers'] = []
+if 'comparison_data' not in st.session_state:
+    st.session_state['comparison_data'] = {}
 
 # Set page configuration
 st.set_page_config(page_title="Stock Data Visualizer", layout="wide")
@@ -46,6 +52,35 @@ with st.sidebar:
                                 key="period_selection")
     period = period_options[period_label]
     
+    # Add separator for comparison mode
+    st.markdown("---")
+    st.header("Stock Comparison")
+    
+    # Toggle for comparison mode
+    comparison_mode = st.checkbox("Enable Stock Comparison", value=st.session_state['comparison_mode'], key="comparison_toggle")
+    st.session_state['comparison_mode'] = comparison_mode
+    
+    if comparison_mode:
+        # Input for multiple tickers
+        comparison_input = st.text_input(
+            "Enter Stock Symbols (comma separated)",
+            value=",".join(st.session_state['comparison_tickers']) if st.session_state['comparison_tickers'] else "AAPL,MSFT,GOOGL",
+            key="comparison_input"
+        )
+        
+        # Parse input to get list of tickers
+        if comparison_input:
+            comparison_tickers = [ticker.strip().upper() for ticker in comparison_input.split(",") if ticker.strip()]
+            st.session_state['comparison_tickers'] = comparison_tickers
+            
+        # Option for normalized chart
+        normalize = st.checkbox("Normalize Prices", value=True, key="normalize_checkbox")
+        
+        # Comparison fetch button with key
+        compare_stocks = st.button("Compare Stocks", use_container_width=True, key="compare_button")
+    else:
+        compare_stocks = False
+    
     # Get data button with a key to maintain state
     fetch_data = st.button("Fetch Stock Data", use_container_width=True, key="fetch_data_button")
 
@@ -75,6 +110,54 @@ def get_stock_data(symbol, time_period):
         st.error(f"Error fetching data: {str(e)}")
         return None
 
+# Function to get comparison data for multiple stocks
+@st.cache_data(ttl=3600)  # Cache for one hour
+def get_comparison_data(tickers, time_period):
+    try:
+        # Download data for all tickers at once
+        data = yf.download(tickers, period=time_period)
+        
+        if data.empty:
+            return None
+        
+        # If we get a single stock, the structure is different
+        if len(tickers) == 1:
+            # Rename columns to include ticker
+            ticker = tickers[0]
+            result = {}
+            result[ticker] = data
+            return result
+        
+        # Extract close prices for comparison
+        result = {}
+        for ticker in tickers:
+            if ticker in data['Close'].columns:
+                ticker_data = data.xs(ticker, axis=1, level=1, drop_level=False)
+                # Create a new DataFrame with proper structure
+                ticker_df = pd.DataFrame()
+                for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                    if (col, ticker) in ticker_data:
+                        ticker_df[col] = ticker_data[(col, ticker)]
+                result[ticker] = ticker_df
+        
+        return result
+    except Exception as e:
+        st.error(f"Error fetching comparison data: {str(e)}")
+        return None
+
+# Function to normalize price data for better comparison
+def normalize_data(data_dict):
+    normalized = {}
+    for ticker, data in data_dict.items():
+        if not data.empty:
+            # Create a copy to avoid changing the original data
+            normalized[ticker] = data.copy()
+            # Normalize to the first day's price
+            first_price = data['Close'].iloc[0]
+            if first_price > 0:  # Avoid division by zero
+                normalized[ticker]['Close'] = data['Close'] / first_price * 100
+    return normalized
+
 # Helper function to update session state
 def update_session_state():
     st.session_state['ticker'] = ticker
@@ -85,9 +168,31 @@ def update_session_state():
         # Record update time
         st.session_state['last_update'] = datetime.datetime.now()
 
+# Helper function to fetch comparison data
+def update_comparison_data():
+    # Get comparison tickers from session state
+    tickers = st.session_state['comparison_tickers']
+    if not tickers:
+        st.error("Please enter at least one stock symbol for comparison")
+        return
+    
+    with st.spinner(f"Fetching data for {', '.join(tickers)}..."):
+        # Get the data
+        comparison_data = get_comparison_data(tickers, period)
+        
+        if comparison_data:
+            st.session_state['comparison_data'] = comparison_data
+            st.session_state['last_comparison_update'] = datetime.datetime.now()
+        else:
+            st.error("Failed to fetch comparison data")
+
 # Update data if fetch button is clicked
 if fetch_data:
     update_session_state()
+
+# Update comparison data if compare button is clicked
+if st.session_state['comparison_mode'] and 'compare_stocks' in locals() and compare_stocks:
+    update_comparison_data()
 
 # Main content area
 if st.session_state['stock_data'] is not None:
@@ -139,20 +244,110 @@ if st.session_state['stock_data'] is not None:
             st.metric("Price Range", f"${min_price:.2f} - ${max_price:.2f}")
         
         # Tabs for different views
-        tab1, tab2, tab3, tab4 = st.tabs(["Price Charts", "Moving Averages", "Bollinger Bands", "Data Table"])
+        tab_list = ["Price Charts", "Moving Averages", "Bollinger Bands", "Data Table"]
         
-        with tab1:
-            st.subheader("Stock Price Chart")
-            # Simple line chart of closing prices
-            price_chart_data = pd.DataFrame(stock_data['Close']).rename(columns={'Close': 'Price'})
-            st.line_chart(price_chart_data, use_container_width=True)
+        # Add comparison tab if in comparison mode
+        if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
+            tab_list.insert(0, "Comparison")
+            tab1, tab2, tab3, tab4, tab5 = st.tabs(tab_list)
+        else:
+            tab1, tab2, tab3, tab4 = st.tabs(tab_list)
+        
+        # Handle the comparison tab if it exists
+        tab_index = 0  # Keep track of which tab we're on
+        
+        if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
+            with tab1:
+                st.subheader("Stock Comparison")
+                
+                if st.session_state['last_comparison_update']:
+                    st.caption(f"Last updated: {st.session_state['last_comparison_update'].strftime('%Y-%m-%d %H:%M:%S')}")
+                
+                # Get normalize value from the sidebar (or default to True if not set)
+                normalize = locals().get('normalize', True) 
+                
+                # Prepare data for chart
+                comparison_chart_data = pd.DataFrame()
+                
+                # Process the comparison data
+                comp_data = st.session_state['comparison_data']
+                
+                # Use either normalized or raw data based on selection
+                if normalize:
+                    processed_data = normalize_data(comp_data)
+                    chart_title = "Normalized Stock Comparison (First Day = 100)"
+                else:
+                    processed_data = comp_data
+                    chart_title = "Stock Price Comparison"
+                
+                # Extract close prices for all tickers
+                for ticker, data in processed_data.items():
+                    if not data.empty:
+                        comparison_chart_data[ticker] = data['Close']
+                
+                # Display the comparison chart
+                st.subheader(chart_title)
+                if not comparison_chart_data.empty:
+                    st.line_chart(comparison_chart_data, use_container_width=True)
+                else:
+                    st.error("No comparison data to display")
+                
+                # Information about the comparison
+                st.write("""
+                ### Comparison Analysis
+                
+                This chart allows you to compare the performance of multiple stocks over time.
+                
+                **When normalized:**
+                - All stocks start at a base value of 100
+                - Chart shows percentage changes relative to starting point
+                - Better for comparing performance regardless of actual price
+                
+                **When not normalized:**
+                - Shows actual stock prices
+                - Better for comparing actual price levels and movements
+                """)
+                
+                # Increment tab index
+                tab_index += 1
             
-            # Show OHLC data
-            st.subheader("Price Details")
-            ohlc_data = stock_data[['Open', 'High', 'Low', 'Close']].tail(10)
-            st.dataframe(ohlc_data, use_container_width=True)
+            # Next tab becomes the price chart tab
+            with tab2:
+                st.subheader("Stock Price Chart")
+                # Simple line chart of closing prices
+                price_chart_data = pd.DataFrame(stock_data['Close']).rename(columns={'Close': 'Price'})
+                st.line_chart(price_chart_data, use_container_width=True)
+                
+                # Show OHLC data
+                st.subheader("Price Details")
+                ohlc_data = stock_data[['Open', 'High', 'Low', 'Close']].tail(10)
+                st.dataframe(ohlc_data, use_container_width=True)
+                
+                # Increment tab index
+                tab_index += 1
+        else:
+            # If no comparison, the first tab is the price chart
+            with tab1:
+                st.subheader("Stock Price Chart")
+                # Simple line chart of closing prices
+                price_chart_data = pd.DataFrame(stock_data['Close']).rename(columns={'Close': 'Price'})
+                st.line_chart(price_chart_data, use_container_width=True)
+                
+                # Show OHLC data
+                st.subheader("Price Details")
+                ohlc_data = stock_data[['Open', 'High', 'Low', 'Close']].tail(10)
+                st.dataframe(ohlc_data, use_container_width=True)
+                
+                # Increment tab index
+                tab_index += 1
         
-        with tab2:
+        # Moving Averages tab - this will be tab2 or tab3 depending on whether comparison is active
+        if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
+            current_tab = tab3  # If comparison is active, MA tab is the 3rd tab
+        else:
+            current_tab = tab2  # Otherwise, it's the 2nd tab
+            
+        with current_tab:
             st.subheader("Moving Average Analysis")
             
             # Select which MAs to display - use key to maintain state
@@ -195,7 +390,13 @@ if st.session_state['stock_data'] is not None:
             - Multiple MAs pointing in same direction: Strong trend confirmation
             """)
         
-        with tab3:
+        # Bollinger Bands tab - this will be tab3 or tab4 depending on whether comparison is active
+        if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
+            current_tab = tab4  # If comparison is active, BB tab is the 4th tab
+        else:
+            current_tab = tab3  # Otherwise, it's the 3rd tab
+            
+        with current_tab:
             st.subheader("Bollinger Bands Analysis")
             
             # Create dataframe for Bollinger Bands display
@@ -224,8 +425,14 @@ if st.session_state['stock_data'] is not None:
             - Bands widening suggest increased volatility
             - Price breaking out after band contraction often signals a significant move
             """)
+        
+        # Data Table tab - this will be tab4 or tab5 depending on whether comparison is active
+        if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
+            current_tab = tab5  # If comparison is active, Data tab is the 5th tab
+        else:
+            current_tab = tab4  # Otherwise, it's the 4th tab
             
-        with tab4:
+        with current_tab:
             st.subheader("Historical Data")
             st.dataframe(stock_data, use_container_width=True)
             
