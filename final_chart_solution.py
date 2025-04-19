@@ -71,10 +71,11 @@ if fetch_data:
         start_date = stock_data.index.min().strftime('%Y-%m-%d')
         end_date = stock_data.index.max().strftime('%Y-%m-%d')
         
-        # Price info
-        current_price = stock_data['Close'].iloc[-1]
-        price_change = stock_data['Close'].iloc[-1] - stock_data['Close'].iloc[-2]
-        price_change_pct = (price_change / stock_data['Close'].iloc[-2]) * 100
+        # Price info - handle Series correctly
+        current_price = float(stock_data['Close'].iloc[-1])
+        previous_price = float(stock_data['Close'].iloc[-2])
+        price_change = current_price - previous_price
+        price_change_pct = (price_change / previous_price) * 100
         
         # Format as green/red based on positive/negative
         price_color = "green" if price_change >= 0 else "red"
@@ -92,8 +93,9 @@ if fetch_data:
             st.metric("Date Range", f"{start_date} to {end_date}")
             
         with col3:
-            min_price = float(stock_data['Low'].min())
-            max_price = float(stock_data['High'].max())
+            # Use iloc[0] as recommended in warning messages
+            min_price = float(stock_data['Low'].min().iloc[0]) if isinstance(stock_data['Low'].min(), pd.Series) else float(stock_data['Low'].min())
+            max_price = float(stock_data['High'].max().iloc[0]) if isinstance(stock_data['High'].max(), pd.Series) else float(stock_data['High'].max())
             st.metric("Price Range", f"${min_price:.2f} - ${max_price:.2f}")
         
         # Tabs for different views
