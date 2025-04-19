@@ -105,6 +105,27 @@ def get_stock_data(symbol, time_period):
         data['BB_Middle'] = rolling_mean
         data['BB_Lower'] = rolling_mean - (rolling_std * 2)
         
+        # Calculate RSI (14-day)
+        delta = data['Close'].diff()
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+        
+        avg_gain = gain.rolling(window=14).mean()
+        avg_loss = loss.rolling(window=14).mean()
+        
+        # Calculate RS and RSI
+        rs = avg_gain / avg_loss
+        data['RSI'] = 100 - (100 / (1 + rs))
+        
+        # Calculate MACD
+        # MACD Line = 12-day EMA - 26-day EMA
+        # Signal Line = 9-day EMA of MACD Line
+        ema12 = data['Close'].ewm(span=12, adjust=False).mean()
+        ema26 = data['Close'].ewm(span=26, adjust=False).mean()
+        data['MACD_Line'] = ema12 - ema26
+        data['MACD_Signal'] = data['MACD_Line'].ewm(span=9, adjust=False).mean()
+        data['MACD_Histogram'] = data['MACD_Line'] - data['MACD_Signal']
+        
         return data
     except Exception as e:
         st.error(f"Error fetching data: {str(e)}")
@@ -244,14 +265,14 @@ if st.session_state['stock_data'] is not None:
             st.metric("Price Range", f"${min_price:.2f} - ${max_price:.2f}")
         
         # Tabs for different views
-        tab_list = ["Price Charts", "Moving Averages", "Bollinger Bands", "Data Table"]
+        tab_list = ["Price Charts", "Moving Averages", "Bollinger Bands", "RSI", "MACD", "Data Table"]
         
         # Add comparison tab if in comparison mode
         if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
             tab_list.insert(0, "Comparison")
-            tab1, tab2, tab3, tab4, tab5 = st.tabs(tab_list)
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(tab_list)
         else:
-            tab1, tab2, tab3, tab4 = st.tabs(tab_list)
+            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(tab_list)
         
         # Handle the comparison tab if it exists
         tab_index = 0  # Keep track of which tab we're on
@@ -426,11 +447,100 @@ if st.session_state['stock_data'] is not None:
             - Price breaking out after band contraction often signals a significant move
             """)
         
-        # Data Table tab - this will be tab4 or tab5 depending on whether comparison is active
+        # RSI tab
         if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
-            current_tab = tab5  # If comparison is active, Data tab is the 5th tab
+            current_tab = tab5  # If comparison is active, RSI tab is the 5th tab
         else:
             current_tab = tab4  # Otherwise, it's the 4th tab
+            
+        with current_tab:
+            st.subheader("Relative Strength Index (RSI)")
+            
+            # Create dataframe for RSI display
+            rsi_data = pd.DataFrame(index=stock_data.index)
+            rsi_data['RSI'] = stock_data['RSI']
+            
+            # Display the RSI chart
+            st.line_chart(rsi_data, use_container_width=True)
+            
+            # Add reference lines for overbought and oversold levels
+            st.write("**Reference Levels:**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.markdown("**70**: Overbought")
+            with col2:
+                st.markdown("**50**: Neutral")
+            with col3:
+                st.markdown("**30**: Oversold")
+            
+            # Explanation of RSI
+            st.write("""
+            ### RSI Interpretation
+            
+            The Relative Strength Index (RSI) is a momentum oscillator that measures the speed and change of price movements.
+            
+            **Key Features:**
+            - RSI ranges from 0 to 100
+            - Typically, RSI above 70 indicates **overbought** conditions (potential sell signal)
+            - RSI below 30 indicates **oversold** conditions (potential buy signal)
+            - The centerline (50) can indicate trend direction
+                * Above 50: Generally bullish conditions
+                * Below 50: Generally bearish conditions
+            
+            **Trading Signals:**
+            - Divergence between RSI and price can signal potential reversals
+            - RSI failure swings (when RSI fails to make a new high/low while price does) can be powerful signals
+            - Staying in extreme territories during strong trends is common and not always a reversal signal
+            """)
+        
+        # MACD tab
+        if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
+            current_tab = tab6  # If comparison is active, MACD tab is the 6th tab
+        else:
+            current_tab = tab5  # Otherwise, it's the 5th tab
+            
+        with current_tab:
+            st.subheader("Moving Average Convergence Divergence (MACD)")
+            
+            # Create dataframe for MACD display
+            macd_data = pd.DataFrame(index=stock_data.index)
+            macd_data['MACD Line'] = stock_data['MACD_Line']
+            macd_data['Signal Line'] = stock_data['MACD_Signal']
+            
+            # Display the MACD lines chart
+            st.subheader("MACD and Signal Lines")
+            st.line_chart(macd_data, use_container_width=True)
+            
+            # Create a separate chart for the histogram
+            st.subheader("MACD Histogram")
+            hist_data = pd.DataFrame(index=stock_data.index)
+            hist_data['Histogram'] = stock_data['MACD_Histogram']
+            st.bar_chart(hist_data, use_container_width=True)
+            
+            # Explanation of MACD
+            st.write("""
+            ### MACD Interpretation
+            
+            The Moving Average Convergence Divergence (MACD) is a trend-following momentum indicator that shows the relationship 
+            between two moving averages of a security's price.
+            
+            **Components:**
+            - **MACD Line**: 12-day EMA - 26-day EMA
+            - **Signal Line**: 9-day EMA of the MACD Line
+            - **Histogram**: MACD Line - Signal Line
+            
+            **Trading Signals:**
+            - **Crossovers**: When MACD crosses above the signal line, it's a bullish signal; when it crosses below, it's bearish
+            - **Divergence**: When price makes a new high/low but MACD doesn't, it can signal a potential reversal
+            - **Histogram**: When the histogram gets smaller, momentum is slowing; increasing histogram indicates increasing momentum
+            - **Zero Line Crossover**: MACD crossing above zero is bullish; crossing below is bearish
+            """)
+        
+        # Data Table tab - now the last tab
+        if st.session_state['comparison_mode'] and st.session_state['comparison_data']:
+            current_tab = tab7  # If comparison is active, Data tab is the 7th tab
+        else:
+            current_tab = tab6  # Otherwise, it's the 6th tab
             
         with current_tab:
             st.subheader("Historical Data")

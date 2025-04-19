@@ -12,6 +12,8 @@ A comprehensive Streamlit-based stock analysis platform that offers advanced fin
 - **Technical Indicators**:
   - Multiple Moving Averages (20, 50, 100, 200-day)
   - Bollinger Bands (20-day with 2 standard deviations)
+  - Relative Strength Index (RSI, 14-day)
+  - Moving Average Convergence Divergence (MACD)
 - **Data Analysis**: Export stock data to CSV for further analysis
 - **User-friendly Interface**: Clean, organized layout with tabs for different analyses
 - **State Persistence**: Maintains application state during interaction using Streamlit's session state
@@ -27,6 +29,8 @@ A comprehensive Streamlit-based stock analysis platform that offers advanced fin
    - **Price Charts**: View basic price history and recent price details
    - **Moving Averages**: Select different moving averages to display
    - **Bollinger Bands**: Analyze price volatility and potential reversal points
+   - **RSI**: Analyze momentum with Relative Strength Index
+   - **MACD**: Identify trends with Moving Average Convergence Divergence
    - **Data Table**: View and download the raw stock data
 
 ### Multi-Stock Comparison
@@ -56,6 +60,31 @@ A comprehensive Streamlit-based stock analysis platform that offers advanced fin
 - Bands narrowing suggest consolidation (low volatility)
 - Bands widening suggest increased volatility
 - Price breaking out after band contraction often signals a significant move
+
+### RSI (Relative Strength Index)
+- **Scale**: 0 to 100
+- **Overbought**: Generally above 70
+- **Oversold**: Generally below 30
+- **Neutral**: Around 50
+
+**Trading Signals:**
+- RSI crossing above 30 from below may indicate a bullish reversal
+- RSI crossing below 70 from above may indicate a bearish reversal
+- Divergence between RSI and price is a strong signal of potential reversal
+- RSI staying in extreme zones during strong trends is common
+
+### MACD (Moving Average Convergence Divergence)
+- **Components**:
+  - MACD Line: 12-day EMA - 26-day EMA
+  - Signal Line: 9-day EMA of MACD Line
+  - Histogram: MACD Line - Signal Line
+
+**Trading Signals:**
+- MACD crossing above Signal Line is bullish
+- MACD crossing below Signal Line is bearish
+- MACD crossing above zero suggests upward momentum
+- MACD crossing below zero suggests downward momentum
+- Divergence between MACD and price indicates potential reversals
 
 ## Technical Stack
 
