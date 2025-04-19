@@ -3,6 +3,14 @@ import pandas as pd
 import yfinance as yf
 import datetime
 
+# Initialize session state to store our data
+if 'stock_data' not in st.session_state:
+    st.session_state['stock_data'] = None
+if 'ticker' not in st.session_state:
+    st.session_state['ticker'] = "AAPL"
+if 'period' not in st.session_state:
+    st.session_state['period'] = "1y"
+
 # Set page configuration
 st.set_page_config(page_title="Stock Data Visualizer", layout="wide")
 
@@ -56,13 +64,25 @@ def get_stock_data(symbol, time_period):
         st.error(f"Error fetching data: {str(e)}")
         return None
 
-# Main content area
-if fetch_data:
+# Helper function to update session state
+def update_session_state():
+    st.session_state['ticker'] = ticker
+    st.session_state['period'] = period
     with st.spinner(f"Fetching data for {ticker}..."):
         # Get the data
-        stock_data = get_stock_data(ticker, period)
-        
-    if stock_data is None or stock_data.empty:
+        st.session_state['stock_data'] = get_stock_data(ticker, period)
+
+# Update data if fetch button is clicked
+if fetch_data:
+    update_session_state()
+
+# Main content area
+if st.session_state['stock_data'] is not None:
+    # Use data from session state
+    stock_data = st.session_state['stock_data']
+    ticker = st.session_state['ticker']
+    
+    if stock_data.empty:
         st.error(f"No data found for {ticker}")
     else:
         # Display basic info
