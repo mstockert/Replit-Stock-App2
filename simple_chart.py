@@ -1,5 +1,7 @@
 import streamlit as st
 import yfinance as yf
+import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
@@ -12,30 +14,21 @@ ticker = st.text_input("Enter Stock Symbol", "AAPL")
 
 # Button to fetch data
 if st.button("Get Stock Data"):
-    # Fetch data
-    data = yf.download(ticker, period="1y")
+    # Show loading message
+    with st.spinner("Fetching data..."):
+        # Fetch data
+        data = yf.download(ticker, period="1y")
     
     if not data.empty:
-        # Create base chart that should ALWAYS appear
+        # ALWAYS show the basic price chart using Streamlit native chart
         st.header("Basic Price Chart (Should Always Display)")
         
-        fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(
-            x=data.index,
-            y=data['Close'],
-            mode='lines',
-            name='Price',
-            line=dict(color='blue', width=2)
-        ))
+        # The proper way to create a dataframe from a Series
+        # This preserves the index from the original data
+        price_df = pd.DataFrame(data['Close']).rename(columns={'Close': 'Price'})
         
-        fig1.update_layout(
-            title=f"{ticker} Stock Price (1 Year)",
-            xaxis_title="Date",
-            yaxis_title="Price ($)",
-            height=400
-        )
-        
-        st.plotly_chart(fig1, use_container_width=True)
+        # Use Streamlit's built-in line chart (more stable than Plotly)
+        st.line_chart(price_df)
         
         # Create a separate section to test checkboxes
         st.header("Moving Averages Test")
@@ -55,17 +48,38 @@ if st.button("Get Stock Data"):
         data['MA100'] = data['Close'].rolling(window=100).mean()
         data['MA200'] = data['Close'].rolling(window=200).mean()
         
-        # The key fix: ALWAYS create a moving averages chart
-        # But only show selected moving averages
+        # COMPLETELY DIFFERENT APPROACH:
+        # Create a properly formatted display dataframe that always includes the price
+        display_df = pd.DataFrame(index=data.index)
+        display_df['Price'] = data['Close']  # Always add price first
         
-        # Display title of the moving averages section
-        st.write("### Moving Average Chart")
+        # Add selected MAs to the display dataframe
+        if show_ma20:
+            display_df['20-Day MA'] = data['MA20']
+        if show_ma50:
+            display_df['50-Day MA'] = data['MA50']
+        if show_ma100:
+            display_df['100-Day MA'] = data['MA100']
+        if show_ma200:
+            display_df['200-Day MA'] = data['MA200']
         
-        # Create figure for moving averages
-        fig2 = go.Figure()
+        # Display title
+        st.subheader("Moving Averages Chart (Streamlit Native)")
         
-        # Always add price trace - this is critical
-        fig2.add_trace(go.Scatter(
+        # Use Streamlit's built-in line chart (more stable than Plotly)
+        st.line_chart(display_df)
+        
+        # Add explanation
+        st.info("Try toggling the Moving Average checkboxes above - the chart should always remain visible.")
+        
+        # ALTERNATIVE APPROACH (using Plotly as a backup)
+        st.subheader("Moving Averages Chart (Plotly)")
+        
+        # Create a basic figure that always includes price
+        fig = go.Figure()
+        
+        # Always add price line
+        fig.add_trace(go.Scatter(
             x=data.index,
             y=data['Close'],
             mode='lines',
@@ -73,59 +87,44 @@ if st.button("Get Stock Data"):
             line=dict(color='black', width=1.5)
         ))
         
-        # Conditionally add moving averages - but the chart structure remains intact
-        if show_ma20:
-            fig2.add_trace(go.Scatter(
-                x=data.index, 
-                y=data['MA20'],
-                mode='lines',
-                name='20-Day MA',
-                line=dict(color='red', width=1.5)
-            ))
+        # Add MAs conditionally
+        ma_colors = {
+            'MA20': 'red',
+            'MA50': 'blue',
+            'MA100': 'green',
+            'MA200': 'purple'
+        }
         
-        if show_ma50:
-            fig2.add_trace(go.Scatter(
-                x=data.index, 
-                y=data['MA50'],
-                mode='lines',
-                name='50-Day MA',
-                line=dict(color='blue', width=1.5)
-            ))
+        ma_display = {
+            'MA20': show_ma20,
+            'MA50': show_ma50,
+            'MA100': show_ma100,
+            'MA200': show_ma200
+        }
         
-        if show_ma100:
-            fig2.add_trace(go.Scatter(
-                x=data.index, 
-                y=data['MA100'],
-                mode='lines',
-                name='100-Day MA',
-                line=dict(color='green', width=1.5)
-            ))
+        for ma_name, show in ma_display.items():
+            if show:
+                fig.add_trace(go.Scatter(
+                    x=data.index,
+                    y=data[ma_name],
+                    mode='lines',
+                    name=ma_name,
+                    line=dict(color=ma_colors[ma_name], width=1.5)
+                ))
         
-        if show_ma200:
-            fig2.add_trace(go.Scatter(
-                x=data.index, 
-                y=data['MA200'],
-                mode='lines',
-                name='200-Day MA',
-                line=dict(color='purple', width=1.5)
-            ))
-        
-        # Layout is ALWAYS applied
-        fig2.update_layout(
+        # Apply layout
+        fig.update_layout(
             title=f"{ticker} with Moving Averages",
             xaxis_title="Date",
             yaxis_title="Price ($)",
             height=400
         )
         
-        # ALWAYS display the chart, even if no MAs are selected
-        st.plotly_chart(fig2, use_container_width=True)
-        
-        # Add explanation text
-        st.info("Try toggling the Moving Average checkboxes above - the chart should always remain visible.")
+        # Display chart
+        st.plotly_chart(fig, use_container_width=True)
         
         # Also display raw data for verification
-        st.header("Stock Data")
-        st.dataframe(data)
+        with st.expander("View Raw Data"):
+            st.dataframe(data)
     else:
         st.error(f"Could not retrieve data for {ticker}")
