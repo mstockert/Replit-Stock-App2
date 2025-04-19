@@ -10,6 +10,10 @@ if 'ticker' not in st.session_state:
     st.session_state['ticker'] = "AAPL"
 if 'period' not in st.session_state:
     st.session_state['period'] = "1y"
+if 'last_update' not in st.session_state:
+    st.session_state['last_update'] = None
+if 'ma_selection' not in st.session_state:
+    st.session_state['ma_selection'] = ["20-Day MA", "50-Day MA"]
 
 # Set page configuration
 st.set_page_config(page_title="Stock Data Visualizer", layout="wide")
@@ -71,6 +75,8 @@ def update_session_state():
     with st.spinner(f"Fetching data for {ticker}..."):
         # Get the data
         st.session_state['stock_data'] = get_stock_data(ticker, period)
+        # Record update time
+        st.session_state['last_update'] = datetime.datetime.now()
 
 # Update data if fetch button is clicked
 if fetch_data:
@@ -87,6 +93,10 @@ if st.session_state['stock_data'] is not None:
     else:
         # Display basic info
         st.header(f"{ticker} Stock Data")
+        
+        # Show data update time
+        if st.session_state['last_update']:
+            st.caption(f"Last updated: {st.session_state['last_update'].strftime('%Y-%m-%d %H:%M:%S')}")
         
         # Display date range
         start_date = stock_data.index.min().strftime('%Y-%m-%d')
