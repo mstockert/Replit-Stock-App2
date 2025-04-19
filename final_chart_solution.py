@@ -71,15 +71,17 @@ if fetch_data:
         start_date = stock_data.index.min().strftime('%Y-%m-%d')
         end_date = stock_data.index.max().strftime('%Y-%m-%d')
         
-        # Price info - handle Series correctly
-        current_price = float(stock_data['Close'].iloc[-1])
-        previous_price = float(stock_data['Close'].iloc[-2])
+        # Price info - handle Series correctly using iloc[0] to avoid warnings
+        current_price = float(stock_data['Close'].iloc[-1].iloc[0]) if isinstance(stock_data['Close'].iloc[-1], pd.Series) else float(stock_data['Close'].iloc[-1])
+        previous_price = float(stock_data['Close'].iloc[-2].iloc[0]) if isinstance(stock_data['Close'].iloc[-2], pd.Series) else float(stock_data['Close'].iloc[-2])
         price_change = current_price - previous_price
         price_change_pct = (price_change / previous_price) * 100
         
-        # Format as green/red based on positive/negative
-        price_color = "green" if price_change >= 0 else "red"
+        # Format delta using Streamlit's expected values
         change_symbol = "+" if price_change >= 0 else ""
+        # For delta_color, use 'normal' (green for positive, red for negative)
+        # or 'inverse' (red for positive, green for negative)
+        delta_color = "normal"  # Use Streamlit's built-in coloring system (positive=green, negative=red)
         
         # Create columns for metrics
         col1, col2, col3 = st.columns(3)
@@ -87,7 +89,7 @@ if fetch_data:
         with col1:
             st.metric("Current Price", f"${current_price:.2f}", 
                       f"{change_symbol}{price_change:.2f} ({change_symbol}{price_change_pct:.2f}%)",
-                      delta_color=price_color)
+                      delta_color=delta_color)
         
         with col2:
             st.metric("Date Range", f"{start_date} to {end_date}")
