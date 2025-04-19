@@ -43,7 +43,10 @@ if st.button("Get Stock Data"):
                 # Basic data display
                 st.write(f"**Time Period:** {selected_period_label}")
                 st.write(f"**Data Points:** {len(data)}")
-                st.write(f"**Price Range:** ${data['Low'].min():.2f} - ${data['High'].max():.2f}")
+                # Fix for formatting float values from Series
+                min_price = float(data['Low'].min())
+                max_price = float(data['High'].max())
+                st.write(f"**Price Range:** ${min_price:.2f} - ${max_price:.2f}")
                 
                 # Calculate all MAs upfront
                 data['MA20'] = data['Close'].rolling(window=20).mean()
