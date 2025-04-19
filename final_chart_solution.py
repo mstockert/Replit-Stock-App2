@@ -63,6 +63,13 @@ def get_stock_data(symbol, time_period):
         data['MA100'] = data['Close'].rolling(window=100).mean()
         data['MA200'] = data['Close'].rolling(window=200).mean()
         
+        # Calculate Bollinger Bands (20-day, 2 standard deviations)
+        rolling_mean = data['Close'].rolling(window=20).mean()
+        rolling_std = data['Close'].rolling(window=20).std()
+        data['BB_Upper'] = rolling_mean + (rolling_std * 2)
+        data['BB_Middle'] = rolling_mean
+        data['BB_Lower'] = rolling_mean - (rolling_std * 2)
+        
         return data
     except Exception as e:
         st.error(f"Error fetching data: {str(e)}")
@@ -132,7 +139,7 @@ if st.session_state['stock_data'] is not None:
             st.metric("Price Range", f"${min_price:.2f} - ${max_price:.2f}")
         
         # Tabs for different views
-        tab1, tab2, tab3 = st.tabs(["Price Charts", "Moving Averages", "Data Table"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Price Charts", "Moving Averages", "Bollinger Bands", "Data Table"])
         
         with tab1:
             st.subheader("Stock Price Chart")
@@ -189,6 +196,36 @@ if st.session_state['stock_data'] is not None:
             """)
         
         with tab3:
+            st.subheader("Bollinger Bands Analysis")
+            
+            # Create dataframe for Bollinger Bands display
+            bb_data = pd.DataFrame(index=stock_data.index)
+            bb_data['Price'] = stock_data['Close']
+            bb_data['Upper Band'] = stock_data['BB_Upper']
+            bb_data['Middle Band'] = stock_data['BB_Middle']
+            bb_data['Lower Band'] = stock_data['BB_Lower']
+            
+            # Display the chart
+            st.line_chart(bb_data, use_container_width=True)
+            
+            # Explanation of Bollinger Bands
+            st.write("""
+            ### Bollinger Bands Interpretation
+            
+            Bollinger Bands consist of three lines:
+            - **Middle Band**: 20-day simple moving average (SMA)
+            - **Upper Band**: SMA + (2 × 20-day standard deviation)
+            - **Lower Band**: SMA - (2 × 20-day standard deviation)
+            
+            **Trading Signals:**
+            - Price touching the upper band may indicate overbought conditions
+            - Price touching the lower band may indicate oversold conditions
+            - Bands narrowing suggest consolidation (low volatility)
+            - Bands widening suggest increased volatility
+            - Price breaking out after band contraction often signals a significant move
+            """)
+            
+        with tab4:
             st.subheader("Historical Data")
             st.dataframe(stock_data, use_container_width=True)
             
