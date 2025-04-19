@@ -55,10 +55,16 @@ if st.button("Get Stock Data"):
         data['MA100'] = data['Close'].rolling(window=100).mean()
         data['MA200'] = data['Close'].rolling(window=200).mean()
         
-        # Create chart for moving averages
+        # The key fix: ALWAYS create a moving averages chart
+        # But only show selected moving averages
+        
+        # Display title of the moving averages section
+        st.write("### Moving Average Chart")
+        
+        # Create figure for moving averages
         fig2 = go.Figure()
         
-        # Always add price trace
+        # Always add price trace - this is critical
         fig2.add_trace(go.Scatter(
             x=data.index,
             y=data['Close'],
@@ -67,7 +73,7 @@ if st.button("Get Stock Data"):
             line=dict(color='black', width=1.5)
         ))
         
-        # Add moving averages based on checkboxes
+        # Conditionally add moving averages - but the chart structure remains intact
         if show_ma20:
             fig2.add_trace(go.Scatter(
                 x=data.index, 
@@ -104,6 +110,7 @@ if st.button("Get Stock Data"):
                 line=dict(color='purple', width=1.5)
             ))
         
+        # Layout is ALWAYS applied
         fig2.update_layout(
             title=f"{ticker} with Moving Averages",
             xaxis_title="Date",
@@ -111,7 +118,11 @@ if st.button("Get Stock Data"):
             height=400
         )
         
+        # ALWAYS display the chart, even if no MAs are selected
         st.plotly_chart(fig2, use_container_width=True)
+        
+        # Add explanation text
+        st.info("Try toggling the Moving Average checkboxes above - the chart should always remain visible.")
         
         # Also display raw data for verification
         st.header("Stock Data")
