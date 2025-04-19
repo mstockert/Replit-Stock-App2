@@ -18,10 +18,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "SimpleChart"
+args = "AlwaysShowChart"
 
 [[workflows.workflow]]
-name = "SimpleChart"
+name = "AlwaysShowChart"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -32,7 +32,7 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "streamlit run simple_chart.py --server.port 5000"
+args = "streamlit run always_show_chart.py --server.port 5000"
 waitForPort = 5000
 
 [[ports]]
